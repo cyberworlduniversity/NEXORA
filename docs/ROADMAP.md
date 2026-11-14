@@ -17,6 +17,7 @@
 - [ ] Adversarial filesystem and race-condition tests
 
 ## Milestone 2 — Static analysis
+- [x] Bounded read-only triage (SHA-256, entropy, printable strings)
 - [ ] Analyzer interface and plugin registry
 - [ ] ELF, PE, and Mach-O header and section parsing
 - [ ] Dependency/import inspection

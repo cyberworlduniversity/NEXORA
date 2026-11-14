@@ -17,6 +17,7 @@ NEXORA is a GitHub-first, local-first reverse-engineering platform. Its determin
 - Local artifact ingestion with a hard byte limit.
 - SHA-256 content addressing and duplicate storage avoidance.
 - Magic-byte identification for ELF, PE, Mach-O, PDF, ZIP, PNG, JPEG, gzip, SQLite, and WebAssembly.
+- Bounded read-only static triage with SHA-256, Shannon entropy, and capped printable-string extraction.
 - JSON Lines provenance manifest.
 - Untrusted-by-default records; ingestion never executes input.
 - GitHub Actions formatting, tests, and Clippy checks.
@@ -32,6 +33,7 @@ Requires stable Rust.
 ## CLI
     cargo run -p nexora-cli -- version
     cargo run -p nexora-cli -- inspect ./sample.bin
+    cargo run -p nexora-cli -- analyze ./sample.bin
     cargo run -p nexora-cli -- ingest ./sample.bin --workspace ./nexora-project
 
 Artifacts are stored under artifacts/<sha256>; metadata is appended to manifest.jsonl. Input files are never executed.

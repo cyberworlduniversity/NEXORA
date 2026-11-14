@@ -310,6 +310,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn analyzes_entropy_and_printable_strings() {
+        let root = std::env::temp_dir().join(format!("nexora-analysis-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let source = root.join("triage.bin");
+        fs::write(&source, b"\0hello world\0AAAA").unwrap();
+
+        let report = analyze_file(&source, 1024).unwrap();
+        assert_eq!(report.size_bytes, 17);
+        assert!(report.entropy_bits_per_byte > 0.0);
+        assert!(report.printable_strings.contains(&"hello world".to_owned()));
+        assert!(report.printable_strings.contains(&"AAAA".to_owned()));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn detects_common_signatures() {
         assert_eq!(ArtifactFormat::detect(b"\x7fELF"), ArtifactFormat::Elf);
         assert_eq!(ArtifactFormat::detect(b"MZ"), ArtifactFormat::Pe);
