@@ -14,19 +14,32 @@ fn run() -> Result<(), String> {
             let file = args.next().ok_or("missing input file")?;
             let path = PathBuf::from(file);
             let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
-            if !meta.is_file() { return Err("input must be a regular file".into()); }
+            if !meta.is_file() {
+                return Err("input must be a regular file".into());
+            }
             println!("File: {}", path.display());
             println!("Size: {} bytes", meta.len());
             println!("Use ingest to calculate a digest and identify the format.");
         }
         Some("ingest") => {
             let file = args.next().ok_or("missing input file")?;
-            if args.next().as_deref() != Some("--workspace") { return Err("expected --workspace <directory>".into()); }
+            if args.next().as_deref() != Some("--workspace") {
+                return Err("expected --workspace <directory>".into());
+            }
             let workspace = args.next().ok_or("missing workspace directory")?;
-            if args.next().is_some() { return Err("unexpected extra arguments".into()); }
-            let record = ingest_file(&PathBuf::from(file), &PathBuf::from(workspace), &IngestOptions::default())
-                .map_err(|e| e.to_string())?;
-            println!("{}", serde_json::to_string_pretty(&record).map_err(|e| e.to_string())?);
+            if args.next().is_some() {
+                return Err("unexpected extra arguments".into());
+            }
+            let record = ingest_file(
+                &PathBuf::from(file),
+                &PathBuf::from(workspace),
+                &IngestOptions::default(),
+            )
+            .map_err(|e| e.to_string())?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&record).map_err(|e| e.to_string())?
+            );
         }
         _ => usage(),
     }
@@ -36,6 +49,9 @@ fn run() -> Result<(), String> {
 fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
-        Err(error) => { eprintln!("error: {error}"); ExitCode::FAILURE }
+        Err(error) => {
+            eprintln!("error: {error}");
+            ExitCode::FAILURE
+        }
     }
 }
