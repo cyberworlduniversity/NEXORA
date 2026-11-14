@@ -283,10 +283,13 @@ pub fn analyze_file(source: &Path, max_bytes: u64) -> Result<StaticAnalysisRepor
             counts[*byte as usize] += 1;
         }
         let length = bytes.len() as f64;
-        counts.iter().filter(|count| **count > 0).fold(0.0, |sum, count| {
-            let probability = *count as f64 / length;
-            sum - probability * probability.log2()
-        })
+        counts
+            .iter()
+            .filter(|count| **count > 0)
+            .fold(0.0, |sum, count| {
+                let probability = *count as f64 / length;
+                sum - probability * probability.log2()
+            })
     };
 
     Ok(StaticAnalysisReport {

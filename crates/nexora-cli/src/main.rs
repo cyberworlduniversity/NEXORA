@@ -15,8 +15,8 @@ fn run() -> Result<(), String> {
             if args.next().is_some() {
                 return Err("unexpected extra arguments".into());
             }
-            let report = analyze_file(&PathBuf::from(file), 512 * 1024 * 1024)
-                .map_err(|e| e.to_string())?;
+            let report =
+                analyze_file(&PathBuf::from(file), 512 * 1024 * 1024).map_err(|e| e.to_string())?;
             println!(
                 "{}",
                 serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
