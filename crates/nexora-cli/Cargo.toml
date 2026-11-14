@@ -1,0 +1,11 @@
+[package]
+name = "nexora-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+nexora-core = { path = "../nexora-core" }
+
+[lints]
+workspace = true
