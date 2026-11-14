@@ -42,3 +42,8 @@ Artifacts are stored under artifacts/<sha256>; metadata is appended to manifest.
 Python adapters, analyzer registry, executable header parsing, dependency analysis, MCP, REST, authentication, dashboard, and isolated dynamic analysis remain planned work. This repository is not yet a complete production reverse-engineering platform.
 
 See docs/ARCHITECTURE.md, docs/ROADMAP.md, and SECURITY.md.
+
+
+### Binary header metadata
+
+Static analysis extracts bounded ELF, PE, and Mach-O header metadata when the header is structurally valid. ELF section-table bounds and PE section-table bounds are checked before metadata is reported. This initial parser does not yet decode symbols, imports, relocations, or section contents. Malformed or unsupported headers produce `binary_metadata: null`; input files are never executed.

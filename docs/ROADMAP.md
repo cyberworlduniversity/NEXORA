@@ -19,7 +19,7 @@
 ## Milestone 2 — Static analysis
 - [x] Bounded read-only triage (SHA-256, entropy, printable strings)
 - [ ] Analyzer interface and plugin registry
-- [ ] ELF, PE, and Mach-O header and section parsing
+- [x] Bounded ELF, PE, and Mach-O header metadata parsing (section-table bounds validated; section contents remain unparsed)
 - [ ] Dependency/import inspection
 - [ ] Structured evidence output and report export
 
