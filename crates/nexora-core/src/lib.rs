@@ -279,13 +279,20 @@ pub fn parse_binary_metadata(bytes: &[u8]) -> Option<BinaryMetadata> {
             return None;
         }
         let machine = read_u16(bytes, 18, little)?;
-        let entry_size = read_u16(bytes, 58, little)?;
-        let count = read_u16(bytes, 60, little)?;
+        let (entry_size_offset, count_offset, minimum_entry_size) = if class == 1 {
+            (46, 48, 40)
+        } else {
+            (58, 60, 64)
+        };
+        let entry_size = read_u16(bytes, entry_size_offset, little)?;
+        let count = read_u16(bytes, count_offset, little)?;
         if count > 0 {
             let table_start = usize::try_from(section_offset).ok()?;
             let table_bytes = usize::from(entry_size).checked_mul(usize::from(count))?;
             let table_end = table_start.checked_add(table_bytes)?;
-            if entry_size == 0 || table_end > bytes.len() { return None; }
+            if usize::from(entry_size) < minimum_entry_size || table_end > bytes.len() {
+                return None;
+            }
         }
         return Some(BinaryMetadata::Elf {
             class: class_name.into(),
@@ -327,12 +334,18 @@ pub fn parse_binary_metadata(bytes: &[u8]) -> Option<BinaryMetadata> {
     };
     let header_size = if is_64 { 32 } else { 28 };
     if bytes.len() < header_size { return None; }
+    let load_command_count = read_u32(bytes, 16, little)?;
+    let load_commands_size = read_u32(bytes, 20, little)?;
+    let commands_end = header_size.checked_add(usize::try_from(load_commands_size).ok()?)?;
+    if commands_end > bytes.len() {
+        return None;
+    }
     Some(BinaryMetadata::MachO {
         class: if is_64 { "macho64" } else { "macho32" }.into(),
         endian: if little { "little" } else { "big" }.into(),
         cpu_type: read_u32(bytes, 4, little)?,
-        load_command_count: read_u32(bytes, 16, little)?,
-        load_commands_size: read_u32(bytes, 20, little)?,
+        load_command_count,
+        load_commands_size,
     })
 }
 
