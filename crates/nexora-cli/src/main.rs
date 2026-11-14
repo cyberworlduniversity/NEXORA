@@ -1,16 +1,16 @@
-use nexora_core::{ingest_file, IngestOptions};
+use nexora_core::{analyze_file, ingest_file, IngestOptions};
 use std::{env, path::PathBuf, process::ExitCode};
 
 fn usage() {
     eprintln!("NEXORA — local-first reverse engineering toolkit");
-    eprintln!("Usage: nexora version | inspect <file> | ingest <file> --workspace <directory>");
+    eprintln!("Usage: nexora version | inspect <file> | analyze <file> | ingest <file> --workspace <directory>");
 }
 
 fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     match args.next().as_deref() {
         Some("version") => println!("nexora {}", env!("CARGO_PKG_VERSION")),
-        Some("inspect") => {
+        Some("analyze") => {\n            let file = args.next().ok_or("missing input file")?;\n            if args.next().is_some() {\n                return Err("unexpected extra arguments".into());\n            }\n            let report = analyze_file(&PathBuf::from(file), 512 * 1024 * 1024)\n                .map_err(|e| e.to_string())?;\n            println!(\n                "{}",\n                serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?\n            );\n        }\n        Some("inspect") => {
             let file = args.next().ok_or("missing input file")?;
             let path = PathBuf::from(file);
             let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;

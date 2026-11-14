@@ -221,6 +221,90 @@ pub fn ingest_file(
     Ok(record)
 }
 
+
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct StaticAnalysisReport {
+    pub schema_version: u32,
+    pub file_name: String,
+    pub size_bytes: u64,
+    pub format: ArtifactFormat,
+    pub sha256: String,
+    pub entropy_bits_per_byte: f64,
+    pub printable_strings: Vec<String>,
+    pub strings_truncated: bool,
+}
+
+/// Perform bounded, read-only triage. This does not load or execute the sample.
+pub fn analyze_file(source: &Path, max_bytes: u64) -> Result<StaticAnalysisReport, CoreError> {
+    let input = File::open(source)?;
+    if !input.metadata()?.is_file() {
+        return Err(CoreError::NotRegularFile);
+    }
+
+    let mut bytes = Vec::new();
+    input
+        .take(max_bytes.saturating_add(1))
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > max_bytes {
+        return Err(CoreError::TooLarge { limit: max_bytes });
+    }
+
+    let mut strings = Vec::new();
+    let mut current = Vec::new();
+    let mut strings_truncated = false;
+    for byte in &bytes {
+        if (0x20..=0x7e).contains(byte) {
+            current.push(*byte);
+        } else if current.len() >= 4 {
+            if strings.len() < 2_000 {
+                strings.push(String::from_utf8_lossy(&current).into_owned());
+            } else {
+                strings_truncated = true;
+            }
+            current.clear();
+        } else {
+            current.clear();
+        }
+    }
+    if current.len() >= 4 {
+        if strings.len() < 2_000 {
+            strings.push(String::from_utf8_lossy(&current).into_owned());
+        } else {
+            strings_truncated = true;
+        }
+    }
+
+    let entropy_bits_per_byte = if bytes.is_empty() {
+        0.0
+    } else {
+        let mut counts = [0u64; 256];
+        for byte in &bytes {
+            counts[*byte as usize] += 1;
+        }
+        let length = bytes.len() as f64;
+        counts.iter().filter(|count| **count > 0).fold(0.0, |sum, count| {
+            let probability = *count as f64 / length;
+            sum - probability * probability.log2()
+        })
+    };
+
+    Ok(StaticAnalysisReport {
+        schema_version: 1,
+        file_name: source
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("unnamed")
+            .to_owned(),
+        size_bytes: bytes.len() as u64,
+        format: ArtifactFormat::detect(&bytes),
+        sha256: format!("{:x}", Sha256::digest(&bytes)),
+        entropy_bits_per_byte,
+        printable_strings: strings,
+        strings_truncated,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
