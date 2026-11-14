@@ -221,8 +221,6 @@ pub fn ingest_file(
     Ok(record)
 }
 
-
-
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct StaticAnalysisReport {
     pub schema_version: u32,
