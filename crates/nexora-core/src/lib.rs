@@ -251,17 +251,29 @@ pub enum BinaryMetadata {
 
 fn read_u16(bytes: &[u8], offset: usize, little: bool) -> Option<u16> {
     let value: [u8; 2] = bytes.get(offset..offset.checked_add(2)?)?.try_into().ok()?;
-    Some(if little { u16::from_le_bytes(value) } else { u16::from_be_bytes(value) })
+    Some(if little {
+        u16::from_le_bytes(value)
+    } else {
+        u16::from_be_bytes(value)
+    })
 }
 
 fn read_u32(bytes: &[u8], offset: usize, little: bool) -> Option<u32> {
     let value: [u8; 4] = bytes.get(offset..offset.checked_add(4)?)?.try_into().ok()?;
-    Some(if little { u32::from_le_bytes(value) } else { u32::from_be_bytes(value) })
+    Some(if little {
+        u32::from_le_bytes(value)
+    } else {
+        u32::from_be_bytes(value)
+    })
 }
 
 fn read_u64(bytes: &[u8], offset: usize, little: bool) -> Option<u64> {
     let value: [u8; 8] = bytes.get(offset..offset.checked_add(8)?)?.try_into().ok()?;
-    Some(if little { u64::from_le_bytes(value) } else { u64::from_be_bytes(value) })
+    Some(if little {
+        u64::from_le_bytes(value)
+    } else {
+        u64::from_be_bytes(value)
+    })
 }
 
 /// Parse bounded structural metadata only. No sections, commands, or payloads are executed.
@@ -269,10 +281,22 @@ pub fn parse_binary_metadata(bytes: &[u8]) -> Option<BinaryMetadata> {
     if bytes.starts_with(b"\x7fELF") {
         let class = *bytes.get(4)?;
         let data = *bytes.get(5)?;
-        let little = match data { 1 => true, 2 => false, _ => return None };
+        let little = match data {
+            1 => true,
+            2 => false,
+            _ => return None,
+        };
         let (class_name, entry_point, section_offset) = match class {
-            1 => ("elf32", read_u32(bytes, 24, little)? as u64, read_u32(bytes, 32, little)? as u64),
-            2 => ("elf64", read_u64(bytes, 24, little)?, read_u64(bytes, 40, little)?),
+            1 => (
+                "elf32",
+                read_u32(bytes, 24, little)? as u64,
+                read_u32(bytes, 32, little)? as u64,
+            ),
+            2 => (
+                "elf64",
+                read_u64(bytes, 24, little)?,
+                read_u64(bytes, 40, little)?,
+            ),
             _ => return None,
         };
         if bytes.get(6).copied()? != 1 || bytes.len() < if class == 1 { 52 } else { 64 } {
@@ -308,14 +332,20 @@ pub fn parse_binary_metadata(bytes: &[u8]) -> Option<BinaryMetadata> {
     if bytes.starts_with(b"MZ") {
         let pe_offset = read_u32(bytes, 0x3c, true)?;
         let pe = usize::try_from(pe_offset).ok()?;
-        if bytes.get(pe..pe.checked_add(4)?)? != b"PE\0\0" { return None; }
+        if bytes.get(pe..pe.checked_add(4)?)? != b"PE\0\0" {
+            return None;
+        }
         let coff = pe.checked_add(4)?;
         let machine = read_u16(bytes, coff, true)?;
         let sections = read_u16(bytes, coff.checked_add(2)?, true)?;
         let optional_size = read_u16(bytes, coff.checked_add(16)?, true)?;
-        let section_table = coff.checked_add(20)?.checked_add(usize::from(optional_size))?;
+        let section_table = coff
+            .checked_add(20)?
+            .checked_add(usize::from(optional_size))?;
         let table_size = usize::from(sections).checked_mul(40)?;
-        if section_table.checked_add(table_size)? > bytes.len() { return None; }
+        if section_table.checked_add(table_size)? > bytes.len() {
+            return None;
+        }
         return Some(BinaryMetadata::Pe {
             machine,
             section_count: sections,
@@ -333,7 +363,9 @@ pub fn parse_binary_metadata(bytes: &[u8]) -> Option<BinaryMetadata> {
         _ => return None,
     };
     let header_size = if is_64 { 32 } else { 28 };
-    if bytes.len() < header_size { return None; }
+    if bytes.len() < header_size {
+        return None;
+    }
     let load_command_count = read_u32(bytes, 16, little)?;
     let load_commands_size = read_u32(bytes, 20, little)?;
     let commands_end = header_size.checked_add(usize::try_from(load_commands_size).ok()?)?;
@@ -440,7 +472,6 @@ pub fn analyze_file(source: &Path, max_bytes: u64) -> Result<StaticAnalysisRepor
 mod tests {
     use super::*;
 
-
     #[test]
     fn parses_minimal_elf64_header_and_rejects_truncated_section_table() {
         let mut bytes = vec![0u8; 64];
@@ -453,7 +484,14 @@ mod tests {
         bytes[40..48].copy_from_slice(&64u64.to_le_bytes());
         bytes[58..60].copy_from_slice(&64u16.to_le_bytes());
         bytes[60..62].copy_from_slice(&0u16.to_le_bytes());
-        assert!(matches!(parse_binary_metadata(&bytes), Some(BinaryMetadata::Elf { machine: 62, entry_point: 0x401000, .. })));
+        assert!(matches!(
+            parse_binary_metadata(&bytes),
+            Some(BinaryMetadata::Elf {
+                machine: 62,
+                entry_point: 0x401000,
+                ..
+            })
+        ));
         bytes[60..62].copy_from_slice(&1u16.to_le_bytes());
         assert!(parse_binary_metadata(&bytes).is_none());
     }
@@ -466,7 +504,14 @@ mod tests {
         bytes[0x80..0x84].copy_from_slice(b"PE\0\0");
         bytes[0x84..0x86].copy_from_slice(&0x8664u16.to_le_bytes());
         bytes[0x86..0x88].copy_from_slice(&2u16.to_le_bytes());
-        assert!(matches!(parse_binary_metadata(&bytes), Some(BinaryMetadata::Pe { machine: 0x8664, section_count: 2, .. })));
+        assert!(matches!(
+            parse_binary_metadata(&bytes),
+            Some(BinaryMetadata::Pe {
+                machine: 0x8664,
+                section_count: 2,
+                ..
+            })
+        ));
         bytes[0x80] = b'X';
         assert!(parse_binary_metadata(&bytes).is_none());
     }
@@ -478,7 +523,14 @@ mod tests {
         bytes[4..8].copy_from_slice(&0x01000007u32.to_le_bytes());
         bytes[16..20].copy_from_slice(&3u32.to_le_bytes());
         bytes[20..24].copy_from_slice(&120u32.to_le_bytes());
-        assert!(matches!(parse_binary_metadata(&bytes), Some(BinaryMetadata::MachO { cpu_type: 0x01000007, load_command_count: 3, .. })));
+        assert!(matches!(
+            parse_binary_metadata(&bytes),
+            Some(BinaryMetadata::MachO {
+                cpu_type: 0x01000007,
+                load_command_count: 3,
+                ..
+            })
+        ));
     }
 
     #[test]
