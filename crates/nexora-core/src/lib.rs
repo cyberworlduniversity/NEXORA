@@ -153,7 +153,7 @@ pub fn ingest_file(
     workspace: &Path,
     options: &IngestOptions,
 ) -> Result<ArtifactRecord, CoreError> {
-    let mut input = File::open(source)?;
+    let input = File::open(source)?;
     if !input.metadata()?.is_file() {
         return Err(CoreError::NotRegularFile);
     }
