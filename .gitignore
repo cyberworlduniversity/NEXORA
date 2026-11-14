@@ -1,0 +1,33 @@
+# Rust
+/target
+**/*.rs.bk
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+dist/
+.next/
+.env*
+!.env.example
+
+# Local analysis data and artifacts
+.nexora/
+analysis-workspace/
+artifacts/
+reports/
+*.bin
+*.dump
+*.core
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
