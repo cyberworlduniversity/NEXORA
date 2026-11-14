@@ -2,44 +2,41 @@
 
 **Advanced Reverse Engineering & Intelligence Platform**
 
-NEXORA is an extensible reverse-engineering platform designed to combine deterministic analysis tools with external AI agents. NEXORA owns the analysis engine, tool execution, permissions, evidence collection, and workflows. Connected agents provide reasoning and may invoke approved NEXORA capabilities through MCP or the REST API.
+NEXORA is a GitHub-first, local-first reverse-engineering platform. Its deterministic Rust engine owns artifact handling, analysis policy, evidence, and tool execution. External AI agents are optional clients connected through narrowly scoped MCP or REST interfaces; they are not the engine.
 
-## Project principles
+## Principles
+- Evidence-first results with hashes and provenance.
+- Safe by default: analyze only software and systems you own or are authorized to inspect.
+- Never execute untrusted samples on the host.
+- No mandatory Vercel, Supabase, Firebase, hosted database, or AI provider.
+- Modular analyzers and optional external tool integrations.
+- Experimental features are not described as production-ready.
 
-- Evidence-first: every finding should link to an artifact, location, tool output, or reproducible observation.
-- Safe by default: analyze only software and systems the operator owns or is authorized to inspect.
-- Sandboxed execution: untrusted samples must never execute on the host.
-- Agent-independent: support multiple external agents without depending on one model provider.
-- Modular: analysis capabilities are plugins with explicit input/output contracts.
-- Honest status: experimental features must be labelled as experimental until validated.
+## Implemented first slice
+- Rust workspace and CLI.
+- Local artifact ingestion with a hard byte limit.
+- SHA-256 content addressing and duplicate storage avoidance.
+- Magic-byte identification for ELF, PE, Mach-O, PDF, ZIP, PNG, JPEG, gzip, SQLite, and WebAssembly.
+- JSON Lines provenance manifest.
+- Untrusted-by-default records; ingestion never executes input.
+- GitHub Actions formatting, tests, and Clippy checks.
 
-## Planned capabilities
+## Build and test
+Requires stable Rust.
 
-- File and binary identification
-- Static metadata and structure analysis
-- Disassembly/decompiler integrations
-- Dependency and call-graph exploration
-- Controlled dynamic analysis in isolated environments
-- Architecture and behavior summaries
-- Vulnerability triage with evidence
-- MCP server and REST API for external agents
-- CLI and web dashboard
-- Extensible plugin/tool registry and audit history
+    cargo fmt --all -- --check
+    cargo test --workspace --all-targets
+    cargo clippy --workspace --all-targets -- -D warnings
+    cargo build --release -p nexora-cli
 
-## Initial architecture
+## CLI
+    cargo run -p nexora-cli -- version
+    cargo run -p nexora-cli -- inspect ./sample.bin
+    cargo run -p nexora-cli -- ingest ./sample.bin --workspace ./nexora-project
 
-- **Core engine:** Rust workspace
-- **Agent and tool adapters:** Python where ecosystem integrations make it practical
-- **API and MCP layer:** added after core contracts stabilize
-- **Dashboard:** TypeScript frontend, deployed separately from analysis workers
-- **Persistence:** local project workspace first; database added when multi-user requirements exist
+Artifacts are stored under artifacts/<sha256>; metadata is appended to manifest.jsonl. Input files are never executed.
 
-See [Architecture](docs/ARCHITECTURE.md), [Roadmap](docs/ROADMAP.md), and [Security Policy](SECURITY.md).
+## Not yet implemented
+Python adapters, analyzer registry, executable header parsing, dependency analysis, MCP, REST, authentication, dashboard, and isolated dynamic analysis remain planned work. This repository is not yet a complete production reverse-engineering platform.
 
-## Current status
-
-NEXORA is at the repository initialization stage. The initial scaffold is not a production-ready reverse-engineering engine. Features will be marked complete only after implementation and tests.
-
-## Development
-
-The first milestone establishes the Rust workspace and documented interfaces. See the roadmap for the staged implementation plan.
+See docs/ARCHITECTURE.md, docs/ROADMAP.md, and SECURITY.md.

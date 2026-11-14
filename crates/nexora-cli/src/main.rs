@@ -1,4 +1,41 @@
-fn main() {
-    println!("NEXORA — Advanced Reverse Engineering & Intelligence Platform");
-    println!("Status: repository scaffold; analysis engine is not implemented yet.");
+use nexora_core::{ingest_file, IngestOptions};
+use std::{env, path::PathBuf, process::ExitCode};
+
+fn usage() {
+    eprintln!("NEXORA — local-first reverse engineering toolkit");
+    eprintln!("Usage: nexora version | inspect <file> | ingest <file> --workspace <directory>");
+}
+
+fn run() -> Result<(), String> {
+    let mut args = env::args().skip(1);
+    match args.next().as_deref() {
+        Some("version") => println!("nexora {}", env!("CARGO_PKG_VERSION")),
+        Some("inspect") => {
+            let file = args.next().ok_or("missing input file")?;
+            let path = PathBuf::from(file);
+            let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+            if !meta.is_file() { return Err("input must be a regular file".into()); }
+            println!("File: {}", path.display());
+            println!("Size: {} bytes", meta.len());
+            println!("Use ingest to calculate a digest and identify the format.");
+        }
+        Some("ingest") => {
+            let file = args.next().ok_or("missing input file")?;
+            if args.next().as_deref() != Some("--workspace") { return Err("expected --workspace <directory>".into()); }
+            let workspace = args.next().ok_or("missing workspace directory")?;
+            if args.next().is_some() { return Err("unexpected extra arguments".into()); }
+            let record = ingest_file(&PathBuf::from(file), &PathBuf::from(workspace), &IngestOptions::default())
+                .map_err(|e| e.to_string())?;
+            println!("{}", serde_json::to_string_pretty(&record).map_err(|e| e.to_string())?);
+        }
+        _ => usage(),
+    }
+    Ok(())
+}
+
+fn main() -> ExitCode {
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => { eprintln!("error: {error}"); ExitCode::FAILURE }
+    }
 }

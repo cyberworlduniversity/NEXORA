@@ -3,36 +3,36 @@
 ## Milestone 0 — Repository foundation
 - [x] Establish project identity and architecture direction
 - [x] Document security boundaries and service choices
-- [ ] Add Rust workspace and CLI skeleton
-- [ ] Add formatting, linting, and CI
+- [x] Add Rust workspace and CLI skeleton
+- [x] Add formatting, linting, and CI workflow
 - [ ] Add contribution and release conventions
 
 ## Milestone 1 — Artifact foundation
-- [ ] Project workspace model
-- [ ] Safe file ingestion and size limits
-- [ ] SHA-256 hashing and file-type identification
-- [ ] Artifact manifest and provenance records
-- [ ] Unit and adversarial input tests
+- [x] Safe regular-file ingestion with a hard byte limit
+- [x] SHA-256 content addressing and duplicate storage avoidance
+- [x] Magic-byte identification for common formats
+- [x] JSONL artifact manifest with provenance fields
+- [x] Unit tests for signatures, deduplication, and size limits
+- [ ] Project workspace model and richer provenance schema
+- [ ] Adversarial filesystem and race-condition tests
 
 ## Milestone 2 — Static analysis
 - [ ] Analyzer interface and plugin registry
-- [ ] Executable metadata extraction
-- [ ] ELF, PE, and Mach-O identification
+- [ ] ELF, PE, and Mach-O header and section parsing
 - [ ] Dependency/import inspection
-- [ ] Structured evidence output
+- [ ] Structured evidence output and report export
 
 ## Milestone 3 — Tool integrations
-- [ ] Ghidra integration (optional external installation)
-- [ ] radare2 integration (optional external installation)
-- [ ] JADX integration for authorized Android application analysis
+- [ ] Optional Ghidra integration
+- [ ] Optional radare2 integration
+- [ ] Optional JADX integration for authorized Android application analysis
 - [ ] Tool version detection and capability declarations
 - [ ] Reproducible integration tests
 
 ## Milestone 4 — Agent interoperability
 - [ ] MCP server with a narrow tool surface
 - [ ] REST API
-- [ ] Authentication and project-level authorization
-- [ ] Request quotas, timeouts, and audit logs
+- [ ] Authentication, project authorization, quotas, timeouts, and audit logs
 - [ ] Agent compatibility tests
 
 ## Milestone 5 — Controlled dynamic analysis
@@ -43,12 +43,11 @@
 - [ ] Threat model and sandbox escape review
 
 ## Milestone 6 — Product experience
-- [ ] CLI workflows
-- [ ] Project and analysis history
+- [ ] CLI analysis and project history
 - [ ] Evidence-based report export
-- [ ] Web dashboard
+- [ ] Optional local dashboard
+- [ ] Optional SQLite-backed indexing and search
 - [ ] Optional managed database and object storage
 
 ## Release gate
-
 A milestone is complete only when implementation, automated tests, security checks, and documented limitations are present. A passing build alone does not establish production readiness.

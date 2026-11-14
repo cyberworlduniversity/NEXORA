@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 nexora-core = { path = "../nexora-core" }
+serde_json.workspace = true
 
 [lints]
 workspace = true
