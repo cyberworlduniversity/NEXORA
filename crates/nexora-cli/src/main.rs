@@ -1,9 +1,9 @@
-use nexora_core::{analyze_file, ingest_file, IngestOptions};
+use nexora_core::{analyze_file, ingest_file, AnalysisPipeline, AnalysisPolicy, IngestOptions};
 use std::{env, path::PathBuf, process::ExitCode};
 
 fn usage() {
     eprintln!("NEXORA — local-first reverse engineering toolkit");
-    eprintln!("Usage: nexora version | inspect <file> | analyze <file> | ingest <file> --workspace <directory>");
+    eprintln!("Usage: nexora version | inspect <file> | analyze <file> | report <file> [--max-bytes <n>] | ingest <file> --workspace <directory>");
 }
 
 fn run() -> Result<(), String> {
@@ -22,7 +22,7 @@ fn run() -> Result<(), String> {
                 serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
             );
         }
-        Some("inspect") => {
+        Some("report") => {\n            let file = args.next().ok_or("missing input file")?;\n            let mut policy = AnalysisPolicy::default();\n            while let Some(option) = args.next() {\n                match option.as_str() {\n                    "--max-bytes" => {\n                        let value = args.next().ok_or("missing value for --max-bytes")?;\n                        policy.max_input_bytes = value.parse().map_err(|_| "invalid --max-bytes value")?;\n                    }\n                    _ => return Err(format!("unknown report option: {option}")),\n                }\n            }\n            let pipeline = AnalysisPipeline::new(policy).map_err(|e| e.to_string())?;\n            let report = pipeline.analyze_file(&PathBuf::from(file)).map_err(|e| e.to_string())?;\n            println!("{}", serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?);\n        }\n        Some("inspect") => {
             let file = args.next().ok_or("missing input file")?;
             let path = PathBuf::from(file);
             let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
