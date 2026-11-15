@@ -20,10 +20,10 @@
 - [x] Bounded read-only triage (SHA-256, entropy, printable strings)
 - [x] In-process analyzer interface and static registry (trusted code only; no dynamic loading)
 - [x] Bounded ELF, PE, and Mach-O header metadata parsing (section-table bounds validated; section contents remain unparsed)
-- [ ] Dependency/import inspection
+- [x] Bounded shared-library dependency names from ELF, PE, and Mach-O metadata
 - [x] Structured evidence records with confidence, authority, deterministic IDs, coverage and limitations
 - [x] Policy-driven static-analysis pipeline and JSON report CLI
-- [ ] Symbol, import, relocation and call-graph analysis
+- [ ] Imported-symbol resolution, relocations, and call-graph analysis
 
 ## Milestone 3 — Tool integrations
 - [ ] Optional Ghidra integration
