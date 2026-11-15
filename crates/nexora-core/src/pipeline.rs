@@ -137,20 +137,25 @@ impl AnalysisPipeline {
                 description: "The printable-string output reached the built-in collection cap.".into(),
             });
         }
+        let mut categories = vec![
+            "artifact_identity".into(),
+            "format_detection".into(),
+            "byte_entropy".into(),
+            "printable_strings".into(),
+        ];
+        if report.binary_metadata.is_some() {
+            categories.push("executable_header_metadata".into());
+        }
+        if report.dependencies.is_some() {
+            categories.push("binary_dependency_metadata".into());
+        }
         let bundle = EvidenceBundle::new(
             artifact_hash,
             records,
             Coverage {
                 analyzed_bytes: report.size_bytes,
                 total_bytes: report.size_bytes,
-                categories: vec![
-                    "artifact_identity".into(),
-                    "format_detection".into(),
-                    "byte_entropy".into(),
-                    "printable_strings".into(),
-                    "executable_header_metadata".into(),
-                    "binary_dependency_metadata".into(),
-                ],
+                categories,
                 partial: true,
             },
             limitations,
