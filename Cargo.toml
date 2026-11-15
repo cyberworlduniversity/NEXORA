@@ -1,15 +1,16 @@
 [workspace]
 resolver = "2"
-members = [
-    "crates/nexora-core",
-    "crates/nexora-cli",
-]
+members = ["crates/nexora-core", "crates/nexora-cli"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/cyberworlduniversity/NEXORA"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
