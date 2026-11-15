@@ -74,7 +74,7 @@ The current Rust core now contains:
 - a bounded artifact-ingestion and static-triage foundation;
 - an evidence schema with deterministic observation IDs, confidence, authority, coverage and limitations;
 - a policy object that defaults to static-only operation and bounds input and output sizes;
-- a static analysis pipeline that emits JSON reports;
+- a static analysis pipeline that emits JSON reports and extracts bounded ELF DT_NEEDED, PE import-library, and Mach-O dylib dependency names;
 - a project manifest model with safe relative-path validation;
 - an analysis-job state machine with explicit legal transitions and audit events;
 - a capability registry that rejects unverified tools and disallowed effects by default.
