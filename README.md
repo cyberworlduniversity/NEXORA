@@ -35,6 +35,7 @@ Requires stable Rust.
     cargo run -p nexora-cli -- version
     cargo run -p nexora-cli -- inspect ./sample.bin
     cargo run -p nexora-cli -- analyze ./sample.bin
+    cargo run -p nexora-cli -- report ./sample.bin
     cargo run -p nexora-cli -- ingest ./sample.bin --workspace ./nexora-project
 
 Artifacts are stored under artifacts/<sha256>; metadata is appended to manifest.jsonl. Input files are never executed.
@@ -52,3 +53,13 @@ See docs/ARCHITECTURE.md, docs/ROADMAP.md, and SECURITY.md.
 ### Binary header metadata
 
 Static analysis extracts bounded ELF, PE, and Mach-O header metadata when the header is structurally valid. ELF section-table bounds and PE section-table bounds are checked before metadata is reported. This initial parser does not yet decode symbols, imports, relocations, or section contents. Malformed or unsupported headers produce `binary_metadata: null`; input files are never executed.
+
+
+## Evidence-backed analysis pipeline
+
+The core exposes structured evidence records tied to artifact SHA-256, explicit confidence and authority labels, deterministic IDs, coverage, and limitations. AnalysisPolicy applies input and output limits and defaults to static-only operation. The report CLI command emits a normalized JSON pipeline report:
+
+    cargo run -p nexora-cli -- report ./sample.bin
+    cargo run -p nexora-cli -- report ./sample.bin --max-bytes 10485760
+
+This remains bounded static triage. It does not execute samples, resolve imports or call graphs, or invoke external reverse-engineering tools. See docs/EVIDENCE_MODEL.md.
