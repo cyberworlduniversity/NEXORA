@@ -438,7 +438,7 @@ impl Analyzer for BinaryHeaderAnalyzer {
     }
 
     fn analyze(&self, bytes: &[u8]) -> Option<serde_json::Value> {
-        serde_json::to_value(parse_binary_metadata(bytes).ok()?).ok()
+        serde_json::to_value(parse_binary_metadata(bytes)?).ok()
     }
 }
 
