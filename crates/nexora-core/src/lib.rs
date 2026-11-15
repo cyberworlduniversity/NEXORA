@@ -221,7 +221,6 @@ pub fn ingest_file(
     Ok(record)
 }
 
-
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum BinaryMetadata {
