@@ -66,3 +66,17 @@ An agent must not receive arbitrary host shell access. Each tool call is validat
 - No bypassing DRM, licensing, access controls, or authentication.
 - No analysis of systems without authorization.
 - No claim that AI-generated reconstruction is original source code or guaranteed correct.
+
+
+## 8. Implemented core contracts
+
+The current Rust core now contains:
+- a bounded artifact-ingestion and static-triage foundation;
+- an evidence schema with deterministic observation IDs, confidence, authority, coverage and limitations;
+- a policy object that defaults to static-only operation and bounds input and output sizes;
+- a static analysis pipeline that emits JSON reports;
+- a project manifest model with safe relative-path validation;
+- an analysis-job state machine with explicit legal transitions and audit events;
+- a capability registry that rejects unverified tools and disallowed effects by default.
+
+These contracts are metadata and in-process policy foundations. They do not yet provide a persistent job scheduler, a process sandbox, dynamic plugin loading, MCP server, REST server, authentication, or dashboard. Those remain separate milestones.
