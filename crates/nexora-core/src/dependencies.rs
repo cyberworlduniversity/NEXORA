@@ -80,6 +80,7 @@ fn parse_elf(bytes: &[u8], maximum: usize) -> Option<DependencyReport> {
         if entry_size < minimum { return None; }
         let dyn_start = as_usize(offset)?;
         let dyn_bytes = as_usize(size)?;
+        if dyn_bytes % entry_size != 0 { return None; }
         let dynamic = range(bytes, dyn_start, dyn_bytes)?;
         for entry in dynamic.chunks_exact(entry_size) {
             let tag = if class == 1 {
@@ -154,7 +155,9 @@ fn parse_pe(bytes: &[u8], maximum: usize) -> Option<DependencyReport> {
     let mut truncated = false;
     if import_rva != 0 && import_size >= 20 {
         let directory = rva_to_offset(import_rva, &sections, headers_size)?;
-        let max_descriptors = (import_size as usize / 20).min(4096);
+        let declared_descriptors = import_size as usize / 20;
+        let max_descriptors = declared_descriptors.min(4096);
+        truncated = declared_descriptors > max_descriptors;
         for index in 0..max_descriptors {
             let base = directory.checked_add(index.checked_mul(20)?)?;
             let descriptor = range(bytes, base, 20)?;
@@ -194,13 +197,13 @@ fn parse_macho(bytes: &[u8], maximum: usize) -> Option<DependencyReport> {
     range(bytes, header_size, command_bytes)?;
     let mut cursor = header_size;
     let mut dependencies = Vec::new();
-    let mut truncated = false;
+    let mut truncated = command_count > 65_536;
     for _ in 0..command_count.min(65_536) {
         if cursor >= command_end { break; }
         let command = u32_at(bytes, cursor, little)?;
         let size = usize::try_from(u32_at(bytes, cursor + 4, little)?).ok()?;
         if size < 8 || cursor.checked_add(size)? > command_end { return None; }
-        let dylib_command = matches!(command, 0x0c | 0x18 | 0x1f | 0x20 | 0x80000018 | 0x8000001f | 0x80000023);
+        let dylib_command = matches!(command, 0x0c | 0x20 | 0x80000018 | 0x8000001f | 0x80000023);
         if dylib_command && size >= 24 {
             let name_offset = usize::try_from(u32_at(bytes, cursor + 8, little)?).ok()?;
             if name_offset < size {
