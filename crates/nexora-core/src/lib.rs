@@ -1,5 +1,12 @@
 //! NEXORA deterministic artifact-ingestion core. Untrusted input is never executed.
 
+pub mod evidence;
+pub mod pipeline;
+pub mod policy;
+
+pub use pipeline::{AnalysisPipeline, PipelineError, PipelineReport};
+pub use policy::{AnalysisPolicy, PolicyError};
+
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::{
