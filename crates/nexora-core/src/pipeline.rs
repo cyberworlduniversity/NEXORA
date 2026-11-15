@@ -96,6 +96,15 @@ impl AnalysisPipeline {
             )?);
         }
 
+        if let Some(dependencies) = &report.dependencies {
+            records.push(EvidenceRecord::new(
+                &artifact_hash, "nexora.binary.dependencies", "binary_dependencies",
+                "Shared-library dependency names were parsed from bounded executable metadata.",
+                Confidence::Observed, Authority::LocalAnalyzer, None,
+                serde_json::to_value(dependencies).expect("dependency report serialization")
+            )?);
+        }
+
         records.push(EvidenceRecord::new(
             &artifact_hash, "nexora.static.strings", "printable_strings",
             "Printable ASCII strings were extracted using the current minimum run length.",
@@ -115,7 +124,7 @@ impl AnalysisPipeline {
             },
             EvidenceLimitation {
                 code: "no_symbol_or_import_resolution".into(),
-                description: "This pipeline does not yet resolve symbols, imports, relocations, or call graphs.".into(),
+                description: "This pipeline extracts basic shared-library names where supported, but does not yet resolve imported symbols, relocations, or call graphs.".into(),
             },
             EvidenceLimitation {
                 code: "no_external_engine".into(),
@@ -140,6 +149,7 @@ impl AnalysisPipeline {
                     "byte_entropy".into(),
                     "printable_strings".into(),
                     "executable_header_metadata".into(),
+                    "binary_dependency_metadata".into(),
                 ],
                 partial: true,
             },
