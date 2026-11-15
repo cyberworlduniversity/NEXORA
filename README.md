@@ -63,3 +63,12 @@ The core exposes structured evidence records tied to artifact SHA-256, explicit 
     cargo run -p nexora-cli -- report ./sample.bin --max-bytes 10485760
 
 This remains bounded static triage. It does not execute samples, resolve imported symbols or call graphs, or invoke external reverse-engineering tools. See docs/EVIDENCE_MODEL.md.
+
+
+## Disassembly and control-flow model
+
+The core now defines normalized instruction records, validates instruction ranges and control-flow metadata, and can derive basic blocks, successor edges, call edges, and unresolved branch targets from trusted disassembler output. It is an adapter contract and graph builder, not yet a machine-code decoder; Ghidra/radare2 adapters remain future work.
+
+## Container packaging
+
+A non-root CLI container is defined in `Dockerfile`. Packaging instructions and the distinction between local CLI packaging and a hosted multi-user deployment are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). NEXORA does not yet expose a web/API service, so a hosted production deployment is not available at this stage.
