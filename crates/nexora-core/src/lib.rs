@@ -1,11 +1,13 @@
 //! NEXORA deterministic artifact-ingestion core. Untrusted input is never executed.
 
+pub mod dependencies;
 pub mod evidence;
 pub mod pipeline;
 pub mod policy;
 pub mod project;
 pub mod tool_registry;
 
+pub use dependencies::DependencyReport;
 pub use pipeline::{AnalysisPipeline, PipelineError, PipelineReport};
 pub use policy::{AnalysisPolicy, PolicyError};
 
@@ -459,6 +461,7 @@ pub struct StaticAnalysisReport {
     pub format: ArtifactFormat,
     pub sha256: String,
     pub binary_metadata: Option<BinaryMetadata>,
+    pub dependencies: Option<DependencyReport>,
     pub analyzer_findings: Vec<AnalyzerFinding>,
     pub entropy_bits_per_byte: f64,
     pub printable_strings: Vec<String>,
@@ -533,6 +536,7 @@ pub fn analyze_file(source: &Path, max_bytes: u64) -> Result<StaticAnalysisRepor
         format: ArtifactFormat::detect(&bytes),
         sha256: format!("{:x}", Sha256::digest(&bytes)),
         binary_metadata: parse_binary_metadata(&bytes),
+        dependencies: dependencies::extract_dependencies(&bytes, 4_096),
         analyzer_findings: AnalyzerRegistry::default().analyze(&bytes),
         entropy_bits_per_byte,
         printable_strings: strings,
