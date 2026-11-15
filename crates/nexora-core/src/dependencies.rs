@@ -264,7 +264,7 @@ mod tests {
         bytes[192 + 40..192 + 44].copy_from_slice(&1u32.to_le_bytes());
         bytes[192 + 56..192 + 64].copy_from_slice(&16u64.to_le_bytes());
 
-        bytes[256..266].copy_from_slice(b"\0libc.so\0");
+        bytes[256..265].copy_from_slice(b"\0libc.so\0");
         bytes[266..274].copy_from_slice(&1i64.to_le_bytes());
         bytes[274..282].copy_from_slice(&1u64.to_le_bytes());
         bytes[282..290].copy_from_slice(&0i64.to_le_bytes());
