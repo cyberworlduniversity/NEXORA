@@ -41,7 +41,7 @@ Requires stable Rust.
 Artifacts are stored under artifacts/<sha256>; metadata is appended to manifest.jsonl. Input files are never executed.
 
 ## Not yet implemented
-Python adapters, dependency/import analysis, MCP, REST, authentication, dashboard, and isolated dynamic analysis remain planned work. This repository is not yet a complete production reverse-engineering platform.
+Python adapters, full imported-symbol/relocation/call-graph analysis, MCP, REST, authentication, dashboard, and isolated dynamic analysis remain planned work. This repository is not yet a complete production reverse-engineering platform.
 
 See docs/ARCHITECTURE.md, docs/ROADMAP.md, and SECURITY.md.
 
@@ -52,7 +52,7 @@ See docs/ARCHITECTURE.md, docs/ROADMAP.md, and SECURITY.md.
 
 ### Binary header metadata
 
-Static analysis extracts bounded ELF, PE, and Mach-O header metadata when the header is structurally valid. ELF section-table bounds and PE section-table bounds are checked before metadata is reported. This initial parser does not yet decode symbols, imports, relocations, or section contents. Malformed or unsupported headers produce `binary_metadata: null`; input files are never executed.
+Static analysis extracts bounded ELF, PE, and Mach-O header metadata when the header is structurally valid. ELF section-table bounds and PE section-table bounds are checked before metadata is reported. A bounded dependency parser also extracts ELF DT_NEEDED names, PE import-library names, and Mach-O dylib load-command names. Imported symbols, relocations, and section contents are not yet decoded. Malformed or unsupported headers produce `binary_metadata: null`; input files are never executed.
 
 
 ## Evidence-backed analysis pipeline
@@ -62,4 +62,4 @@ The core exposes structured evidence records tied to artifact SHA-256, explicit 
     cargo run -p nexora-cli -- report ./sample.bin
     cargo run -p nexora-cli -- report ./sample.bin --max-bytes 10485760
 
-This remains bounded static triage. It does not execute samples, resolve imports or call graphs, or invoke external reverse-engineering tools. See docs/EVIDENCE_MODEL.md.
+This remains bounded static triage. It does not execute samples, resolve imported symbols or call graphs, or invoke external reverse-engineering tools. See docs/EVIDENCE_MODEL.md.
