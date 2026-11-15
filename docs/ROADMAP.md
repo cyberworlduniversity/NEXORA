@@ -23,7 +23,8 @@
 - [x] Bounded shared-library dependency names from ELF, PE, and Mach-O metadata
 - [x] Structured evidence records with confidence, authority, deterministic IDs, coverage and limitations
 - [x] Policy-driven static-analysis pipeline and JSON report CLI
-- [ ] Imported-symbol resolution, relocations, and call-graph analysis
+- [x] Normalized disassembly records and deterministic CFG construction from adapter output
+- [ ] Machine-code decoding adapters, imported-symbol resolution, and relocation-aware call-graph analysis
 
 ## Milestone 3 — Tool integrations
 - [ ] Optional Ghidra integration
