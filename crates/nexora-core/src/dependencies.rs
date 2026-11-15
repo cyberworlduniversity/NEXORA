@@ -242,6 +242,39 @@ mod tests {
     }
 
     #[test]
+    fn extracts_elf_dt_needed_library_names() {
+        let mut bytes = vec![0u8; 298];
+        bytes[..4].copy_from_slice(b"\x7fELF");
+        bytes[4] = 2;
+        bytes[5] = 1;
+        bytes[6] = 1;
+        bytes[40..48].copy_from_slice(&64u64.to_le_bytes());
+        bytes[58..60].copy_from_slice(&64u16.to_le_bytes());
+        bytes[60..62].copy_from_slice(&3u16.to_le_bytes());
+
+        // SHT_STRTAB at section index 1.
+        bytes[128 + 4..128 + 8].copy_from_slice(&3u32.to_le_bytes());
+        bytes[128 + 24..128 + 32].copy_from_slice(&256u64.to_le_bytes());
+        bytes[128 + 32..128 + 40].copy_from_slice(&10u64.to_le_bytes());
+
+        // SHT_DYNAMIC at section index 2, linked to section 1.
+        bytes[192 + 4..192 + 8].copy_from_slice(&6u32.to_le_bytes());
+        bytes[192 + 24..192 + 32].copy_from_slice(&266u64.to_le_bytes());
+        bytes[192 + 32..192 + 40].copy_from_slice(&32u64.to_le_bytes());
+        bytes[192 + 40..192 + 44].copy_from_slice(&1u32.to_le_bytes());
+        bytes[192 + 56..192 + 64].copy_from_slice(&16u64.to_le_bytes());
+
+        bytes[256..266].copy_from_slice(b"\0libc.so\0");
+        bytes[266..274].copy_from_slice(&1i64.to_le_bytes());
+        bytes[274..282].copy_from_slice(&1u64.to_le_bytes());
+        bytes[282..290].copy_from_slice(&0i64.to_le_bytes());
+
+        let report = extract_dependencies(&bytes, 10).unwrap();
+        assert_eq!(report.format, "elf64");
+        assert_eq!(report.dependencies, vec!["libc.so"]);
+    }
+
+    #[test]
     fn parses_minimal_pe_without_import_directory() {
         let mut bytes = vec![0u8; 0x200];
         bytes[..2].copy_from_slice(b"MZ");
