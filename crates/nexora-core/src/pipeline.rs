@@ -56,7 +56,15 @@ impl AnalysisPipeline {
     pub fn analyze_file(&self, path: &Path) -> Result<PipelineReport, PipelineError> {
         let metadata = std::fs::metadata(path).map_err(CoreError::Io)?;
         self.policy.check_input_size(metadata.len())?;
-        let report = analyze_file(path, self.policy.max_input_bytes)?;
+        let mut report = analyze_file(path, self.policy.max_input_bytes)?;
+        report.printable_strings.retain(|value| value.len() >= self.policy.min_printable_string_length);
+        if report.printable_strings.len() > self.policy.max_printable_strings {
+            report.printable_strings.truncate(self.policy.max_printable_strings);
+            report.strings_truncated = true;
+        }
+        if report.analyzer_findings.len() > self.policy.max_findings {
+            report.analyzer_findings.truncate(self.policy.max_findings);
+        }
         let artifact_hash = report.sha256.clone();
         let mut records = Vec::new();
 
@@ -125,7 +133,7 @@ impl AnalysisPipeline {
             records,
             Coverage {
                 analyzed_bytes: report.size_bytes,
-                total_bytes: metadata.len(),
+                total_bytes: report.size_bytes,
                 categories: vec![
                     "artifact_identity".into(),
                     "format_detection".into(),
