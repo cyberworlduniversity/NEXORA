@@ -516,8 +516,10 @@ mod tests {
     }
 
     #[test]
-    fn parses_macho64_header() {
-        let mut bytes = vec![0u8; 32];
+    fn parses_macho64_header_and_rejects_truncated_load_commands() {
+        // A 32-byte Mach-O64 header declares 120 bytes of load commands.
+        // Include the complete declared command region in this valid fixture.
+        let mut bytes = vec![0u8; 32 + 120];
         bytes[..4].copy_from_slice(&[0xcf, 0xfa, 0xed, 0xfe]);
         bytes[4..8].copy_from_slice(&0x01000007u32.to_le_bytes());
         bytes[16..20].copy_from_slice(&3u32.to_le_bytes());
@@ -527,9 +529,14 @@ mod tests {
             Some(BinaryMetadata::MachO {
                 cpu_type: 0x01000007,
                 load_command_count: 3,
+                load_commands_size: 120,
                 ..
             })
         ));
+
+        // The parser must reject a file shorter than its declared command region.
+        bytes.truncate(32 + 119);
+        assert!(parse_binary_metadata(&bytes).is_none());
     }
 
     #[test]
