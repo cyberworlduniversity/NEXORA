@@ -141,7 +141,7 @@ impl AnalysisPipeline {
                     "printable_strings".into(),
                     "executable_header_metadata".into(),
                 ],
-                partial: false,
+                partial: true,
             },
             limitations,
         )?;
