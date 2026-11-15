@@ -255,7 +255,7 @@ mod tests {
         // SHT_STRTAB at section index 1.
         bytes[128 + 4..128 + 8].copy_from_slice(&3u32.to_le_bytes());
         bytes[128 + 24..128 + 32].copy_from_slice(&256u64.to_le_bytes());
-        bytes[128 + 32..128 + 40].copy_from_slice(&10u64.to_le_bytes());
+        bytes[128 + 32..128 + 40].copy_from_slice(&9u64.to_le_bytes());
 
         // SHT_DYNAMIC at section index 2, linked to section 1.
         bytes[192 + 4..192 + 8].copy_from_slice(&6u32.to_le_bytes());
