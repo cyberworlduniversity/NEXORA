@@ -1,6 +1,7 @@
 //! NEXORA deterministic artifact-ingestion core. Untrusted input is never executed.
 
 pub mod dependencies;
+pub mod disassembly;
 pub mod evidence;
 pub mod pipeline;
 pub mod policy;
@@ -8,6 +9,7 @@ pub mod project;
 pub mod tool_registry;
 
 pub use dependencies::DependencyReport;
+pub use disassembly::{build_control_flow_graph, BasicBlock, CallEdge, ControlFlowGraph, DisassemblyError, InstructionRecord};
 pub use pipeline::{AnalysisPipeline, PipelineError, PipelineReport};
 pub use policy::{AnalysisPolicy, PolicyError};
 
