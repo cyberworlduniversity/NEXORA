@@ -23,3 +23,5 @@ Dynamic analysis must not be enabled merely by changing a boolean in a productio
 ## Reproducibility
 
 Reports retain the artifact digest, engine version, analysis mode, analyzer identity, structured evidence, coverage, and limitations. The current pipeline is deterministic for the same input bytes and engine version, subject to platform-independent serialization and future schema compatibility guarantees.
+
+The current executable dependency parser extracts bounded ELF DT_NEEDED names, PE import-library names, and Mach-O dylib load-command names. It does not resolve individual imported symbols, relocation targets, or call graphs. A parser result is an observation about file metadata, not proof that a dependency is loaded at runtime.
