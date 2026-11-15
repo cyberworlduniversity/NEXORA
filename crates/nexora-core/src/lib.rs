@@ -380,6 +380,68 @@ pub fn parse_binary_metadata(bytes: &[u8]) -> Option<BinaryMetadata> {
     })
 }
 
+/// One deterministic analyzer. Implementations must be bounded and read-only.
+/// They receive bytes already capped by the caller and must never execute the input.
+pub trait Analyzer: Send + Sync {
+    fn name(&self) -> &'static str;
+    fn analyze(&self, bytes: &[u8]) -> Option<serde_json::Value>;
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct AnalyzerFinding {
+    pub analyzer: String,
+    pub findings: serde_json::Value,
+}
+
+/// In-process registry for trusted analyzer implementations.
+/// Dynamic library loading and executing sample-provided code are intentionally unsupported.
+pub struct AnalyzerRegistry {
+    analyzers: Vec<Box<dyn Analyzer>>,
+}
+
+impl AnalyzerRegistry {
+    pub fn new() -> Self {
+        Self { analyzers: Vec::new() }
+    }
+
+    pub fn register<A: Analyzer + 'static>(&mut self, analyzer: A) {
+        self.analyzers.push(Box::new(analyzer));
+    }
+
+    pub fn analyze(&self, bytes: &[u8]) -> Vec<AnalyzerFinding> {
+        self.analyzers
+            .iter()
+            .filter_map(|analyzer| {
+                analyzer.analyze(bytes).map(|findings| AnalyzerFinding {
+                    analyzer: analyzer.name().to_owned(),
+                    findings,
+                })
+            })
+            .collect()
+    }
+}
+
+impl Default for AnalyzerRegistry {
+    fn default() -> Self {
+        let mut registry = Self::new();
+        registry.register(BinaryHeaderAnalyzer);
+        registry
+    }
+}
+
+/// Built-in bounded ELF, PE, and Mach-O header analyzer.
+pub struct BinaryHeaderAnalyzer;
+
+impl Analyzer for BinaryHeaderAnalyzer {
+    fn name(&self) -> &'static str {
+        "binary_header"
+    }
+
+    fn analyze(&self, bytes: &[u8]) -> Option<serde_json::Value> {
+        serde_json::to_value(parse_binary_metadata(bytes).ok()?).ok()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct StaticAnalysisReport {
     pub schema_version: u32,
@@ -388,6 +450,7 @@ pub struct StaticAnalysisReport {
     pub format: ArtifactFormat,
     pub sha256: String,
     pub binary_metadata: Option<BinaryMetadata>,
+    pub analyzer_findings: Vec<AnalyzerFinding>,
     pub entropy_bits_per_byte: f64,
     pub printable_strings: Vec<String>,
     pub strings_truncated: bool,
@@ -451,7 +514,7 @@ pub fn analyze_file(source: &Path, max_bytes: u64) -> Result<StaticAnalysisRepor
     };
 
     Ok(StaticAnalysisReport {
-        schema_version: 1,
+        schema_version: 2,
         file_name: source
             .file_name()
             .and_then(|name| name.to_str())
@@ -461,6 +524,7 @@ pub fn analyze_file(source: &Path, max_bytes: u64) -> Result<StaticAnalysisRepor
         format: ArtifactFormat::detect(&bytes),
         sha256: format!("{:x}", Sha256::digest(&bytes)),
         binary_metadata: parse_binary_metadata(&bytes),
+        analyzer_findings: AnalyzerRegistry::default().analyze(&bytes),
         entropy_bits_per_byte,
         printable_strings: strings,
         strings_truncated,
@@ -470,6 +534,41 @@ pub fn analyze_file(source: &Path, max_bytes: u64) -> Result<StaticAnalysisRepor
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct AlwaysFindingAnalyzer;
+
+    impl Analyzer for AlwaysFindingAnalyzer {
+        fn name(&self) -> &'static str {
+            "test_probe"
+        }
+
+        fn analyze(&self, bytes: &[u8]) -> Option<serde_json::Value> {
+            Some(serde_json::json!({ "input_bytes": bytes.len() }))
+        }
+    }
+
+    #[test]
+    fn analyzer_registry_runs_registered_analyzers_without_executing_input() {
+        let mut registry = AnalyzerRegistry::new();
+        registry.register(AlwaysFindingAnalyzer);
+        let findings = registry.analyze(b"untrusted sample");
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].analyzer, "test_probe");
+        assert_eq!(findings[0].findings["input_bytes"], 16);
+    }
+
+    #[test]
+    fn default_registry_reports_binary_header_metadata() {
+        let mut bytes = vec![0u8; 32 + 8];
+        bytes[..4].copy_from_slice(&[0xcf, 0xfa, 0xed, 0xfe]);
+        bytes[4..8].copy_from_slice(&0x01000007u32.to_le_bytes());
+        bytes[16..20].copy_from_slice(&1u32.to_le_bytes());
+        bytes[20..24].copy_from_slice(&8u32.to_le_bytes());
+        let findings = AnalyzerRegistry::default().analyze(&bytes);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].analyzer, "binary_header");
+        assert_eq!(findings[0].findings["kind"], "mach_o");
+    }
 
     #[test]
     fn parses_minimal_elf64_header_and_rejects_truncated_section_table() {
