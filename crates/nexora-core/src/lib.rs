@@ -3,6 +3,8 @@
 pub mod evidence;
 pub mod pipeline;
 pub mod policy;
+pub mod project;
+pub mod tool_registry;
 
 pub use pipeline::{AnalysisPipeline, PipelineError, PipelineReport};
 pub use policy::{AnalysisPolicy, PolicyError};
