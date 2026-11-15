@@ -129,9 +129,11 @@ mod tests {
         let mut registry = ToolRegistry::default();
         assert!(registry.register(descriptor(ToolEffect::ReadOnly), &RegistryPolicy::default()).is_ok());
         assert_eq!(registry.len(), 1);
+        let mut network_tool = descriptor(ToolEffect::NetworkAccess);
+        network_tool.tool_id = "network.inspect".into();
         assert!(matches!(
-            registry.register(descriptor(ToolEffect::NetworkAccess), &RegistryPolicy::default()),
-            Err(RegistryError::DuplicateTool(_))
+            registry.register(network_tool, &RegistryPolicy::default()),
+            Err(RegistryError::EffectNotPermitted { .. })
         ));
     }
 
