@@ -80,3 +80,10 @@ The current Rust core now contains:
 - a capability registry that rejects unverified tools and disallowed effects by default.
 
 These contracts are metadata and in-process policy foundations. They do not yet provide a persistent job scheduler, a process sandbox, dynamic plugin loading, MCP server, REST server, authentication, or dashboard. Those remain separate milestones.
+
+
+## 9. Disassembly adapter boundary
+
+The core accepts normalized instruction records from a trusted adapter, validates address ranges and control-flow flags, and derives basic blocks and graph edges. This separates format- and architecture-specific decoding from the canonical NEXORA graph representation. The current implementation does not decode machine code itself and does not execute samples. Adapter processes must later be declared in the capability registry and isolated according to the deployment threat model.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the current CLI packaging boundary and missing hosted-service components.
