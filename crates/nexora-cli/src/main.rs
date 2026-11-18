@@ -9,7 +9,12 @@ fn usage() {
 fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     match args.next().as_deref() {
-        Some("version") => println!("nexora {}", env!("CARGO_PKG_VERSION")),
+        Some("version") => {
+            if args.next().is_some() {
+                return Err("unexpected extra arguments".into());
+            }
+            println!("nexora {}", env!("CARGO_PKG_VERSION"));
+        }
         Some("analyze") => {
             let file = args.next().ok_or("missing input file")?;
             if args.next().is_some() {
@@ -46,6 +51,9 @@ fn run() -> Result<(), String> {
         }
         Some("inspect") => {
             let file = args.next().ok_or("missing input file")?;
+            if args.next().is_some() {
+                return Err("unexpected extra arguments".into());
+            }
             let path = PathBuf::from(file);
             let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
             if !meta.is_file() {
@@ -75,7 +83,14 @@ fn run() -> Result<(), String> {
                 serde_json::to_string_pretty(&record).map_err(|e| e.to_string())?
             );
         }
-        _ => usage(),
+        None => {
+            usage();
+            return Err("missing command".into());
+        }
+        Some(command) => {
+            usage();
+            return Err(format!("unknown command: {command}"));
+        }
     }
     Ok(())
 }
