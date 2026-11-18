@@ -1,7 +1,9 @@
 //! Deterministic static-analysis orchestration and evidence normalization.
 use crate::{
     analyze_file,
-    evidence::{Authority, Confidence, Coverage, EvidenceBundle, EvidenceLimitation, EvidenceRecord},
+    evidence::{
+        Authority, Confidence, Coverage, EvidenceBundle, EvidenceLimitation, EvidenceRecord,
+    },
     policy::{AnalysisPolicy, PolicyError},
     CoreError, StaticAnalysisReport,
 };
@@ -36,9 +38,21 @@ impl std::fmt::Display for PipelineError {
     }
 }
 impl std::error::Error for PipelineError {}
-impl From<CoreError> for PipelineError { fn from(v: CoreError) -> Self { Self::Core(v) } }
-impl From<PolicyError> for PipelineError { fn from(v: PolicyError) -> Self { Self::Policy(v) } }
-impl From<crate::evidence::EvidenceError> for PipelineError { fn from(v: crate::evidence::EvidenceError) -> Self { Self::Evidence(v) } }
+impl From<CoreError> for PipelineError {
+    fn from(v: CoreError) -> Self {
+        Self::Core(v)
+    }
+}
+impl From<PolicyError> for PipelineError {
+    fn from(v: PolicyError) -> Self {
+        Self::Policy(v)
+    }
+}
+impl From<crate::evidence::EvidenceError> for PipelineError {
+    fn from(v: crate::evidence::EvidenceError) -> Self {
+        Self::Evidence(v)
+    }
+}
 
 pub struct AnalysisPipeline {
     policy: AnalysisPolicy,
@@ -50,16 +64,22 @@ impl AnalysisPipeline {
         Ok(Self { policy })
     }
 
-    pub fn policy(&self) -> &AnalysisPolicy { &self.policy }
+    pub fn policy(&self) -> &AnalysisPolicy {
+        &self.policy
+    }
 
     /// Runs bounded, read-only analyzers. It never executes the supplied artifact.
     pub fn analyze_file(&self, path: &Path) -> Result<PipelineReport, PipelineError> {
         let metadata = std::fs::metadata(path).map_err(CoreError::Io)?;
         self.policy.check_input_size(metadata.len())?;
         let mut report = analyze_file(path, self.policy.max_input_bytes)?;
-        report.printable_strings.retain(|value| value.len() >= self.policy.min_printable_string_length);
+        report
+            .printable_strings
+            .retain(|value| value.len() >= self.policy.min_printable_string_length);
         if report.printable_strings.len() > self.policy.max_printable_strings {
-            report.printable_strings.truncate(self.policy.max_printable_strings);
+            report
+                .printable_strings
+                .truncate(self.policy.max_printable_strings);
             report.strings_truncated = true;
         }
         if report.analyzer_findings.len() > self.policy.max_findings {
@@ -69,51 +89,71 @@ impl AnalysisPipeline {
         let mut records = Vec::new();
 
         records.push(EvidenceRecord::new(
-            &artifact_hash, "nexora.static.triage", "artifact_identity",
+            &artifact_hash,
+            "nexora.static.triage",
+            "artifact_identity",
             "Artifact size, detected format and SHA-256 were observed from the input bytes.",
-            Confidence::Observed, Authority::OriginalArtifact, None,
+            Confidence::Observed,
+            Authority::OriginalArtifact,
+            None,
             serde_json::json!({
                 "file_name": report.file_name,
                 "size_bytes": report.size_bytes,
                 "format": report.format,
                 "sha256": report.sha256
-            })
+            }),
         )?);
 
         records.push(EvidenceRecord::new(
-            &artifact_hash, "nexora.static.entropy", "byte_entropy",
+            &artifact_hash,
+            "nexora.static.entropy",
+            "byte_entropy",
             "Shannon byte entropy was calculated over the complete bounded input.",
-            Confidence::Observed, Authority::LocalAnalyzer, None,
-            serde_json::json!({ "bits_per_byte": report.entropy_bits_per_byte })
+            Confidence::Observed,
+            Authority::LocalAnalyzer,
+            None,
+            serde_json::json!({ "bits_per_byte": report.entropy_bits_per_byte }),
         )?);
 
         if let Some(binary) = &report.binary_metadata {
             records.push(EvidenceRecord::new(
-                &artifact_hash, "nexora.binary.header", "binary_header",
+                &artifact_hash,
+                "nexora.binary.header",
+                "binary_header",
                 "A structurally bounded executable header was parsed.",
-                Confidence::Observed, Authority::LocalAnalyzer, None,
-                serde_json::to_value(binary).expect("binary metadata serialization")
+                Confidence::Observed,
+                Authority::LocalAnalyzer,
+                None,
+                serde_json::to_value(binary).expect("binary metadata serialization"),
             )?);
         }
 
         if let Some(dependencies) = &report.dependencies {
             records.push(EvidenceRecord::new(
-                &artifact_hash, "nexora.binary.dependencies", "binary_dependencies",
+                &artifact_hash,
+                "nexora.binary.dependencies",
+                "binary_dependencies",
                 "Shared-library dependency names were parsed from bounded executable metadata.",
-                Confidence::Observed, Authority::LocalAnalyzer, None,
-                serde_json::to_value(dependencies).expect("dependency report serialization")
+                Confidence::Observed,
+                Authority::LocalAnalyzer,
+                None,
+                serde_json::to_value(dependencies).expect("dependency report serialization"),
             )?);
         }
 
         records.push(EvidenceRecord::new(
-            &artifact_hash, "nexora.static.strings", "printable_strings",
+            &artifact_hash,
+            "nexora.static.strings",
+            "printable_strings",
             "Printable ASCII strings were extracted using the current minimum run length.",
-            Confidence::Observed, Authority::LocalAnalyzer, None,
+            Confidence::Observed,
+            Authority::LocalAnalyzer,
+            None,
             serde_json::json!({
                 "count": report.printable_strings.len(),
                 "truncated": report.strings_truncated,
                 "values": report.printable_strings
-            })
+            }),
         )?);
 
         self.policy.check_evidence_count(records.len())?;
@@ -134,7 +174,8 @@ impl AnalysisPipeline {
         if report.strings_truncated {
             limitations.push(EvidenceLimitation {
                 code: "strings_truncated".into(),
-                description: "The printable-string output reached the built-in collection cap.".into(),
+                description: "The printable-string output reached the built-in collection cap."
+                    .into(),
             });
         }
         let mut categories = vec![
@@ -160,7 +201,11 @@ impl AnalysisPipeline {
             },
             limitations,
         )?;
-        let limitation_text = bundle.limitations.iter().map(|v| v.description.clone()).collect();
+        let limitation_text = bundle
+            .limitations
+            .iter()
+            .map(|v| v.description.clone())
+            .collect();
         Ok(PipelineReport {
             schema_version: 1,
             engine: "NEXORA".into(),

@@ -74,11 +74,15 @@ pub enum EvidenceError {
 impl std::fmt::Display for EvidenceError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InvalidArtifactHash => write!(f, "artifact SHA-256 must be 64 hexadecimal characters"),
+            Self::InvalidArtifactHash => {
+                write!(f, "artifact SHA-256 must be 64 hexadecimal characters")
+            }
             Self::EmptyField(name) => write!(f, "{name} must not be empty"),
             Self::InvalidLocation => write!(f, "evidence location is invalid"),
             Self::DuplicateEvidenceId => write!(f, "evidence bundle contains duplicate IDs"),
-            Self::CoverageExceedsArtifact => write!(f, "analyzed bytes exceed total artifact bytes"),
+            Self::CoverageExceedsArtifact => {
+                write!(f, "analyzed bytes exceed total artifact bytes")
+            }
         }
     }
 }
@@ -107,10 +111,19 @@ impl EvidenceRecord {
         if !valid_sha256(&artifact_sha256) {
             return Err(EvidenceError::InvalidArtifactHash);
         }
-        if analyzer.trim().is_empty() { return Err(EvidenceError::EmptyField("analyzer")); }
-        if evidence_type.trim().is_empty() { return Err(EvidenceError::EmptyField("evidence_type")); }
-        if summary.trim().is_empty() { return Err(EvidenceError::EmptyField("summary")); }
-        if location.as_ref().is_some_and(|v| v.length == 0 || v.offset.checked_add(v.length).is_none()) {
+        if analyzer.trim().is_empty() {
+            return Err(EvidenceError::EmptyField("analyzer"));
+        }
+        if evidence_type.trim().is_empty() {
+            return Err(EvidenceError::EmptyField("evidence_type"));
+        }
+        if summary.trim().is_empty() {
+            return Err(EvidenceError::EmptyField("summary"));
+        }
+        if location
+            .as_ref()
+            .is_some_and(|v| v.length == 0 || v.offset.checked_add(v.length).is_none())
+        {
             return Err(EvidenceError::InvalidLocation);
         }
         let identity = serde_json::json!({
@@ -123,7 +136,8 @@ impl EvidenceRecord {
             "location": location,
             "payload": payload
         });
-        let canonical = serde_json::to_vec(&identity).expect("JSON value serialization is infallible");
+        let canonical =
+            serde_json::to_vec(&identity).expect("JSON value serialization is infallible");
         let evidence_id = format!("{:x}", Sha256::digest(canonical));
         Ok(Self {
             schema_version: 1,
@@ -148,7 +162,9 @@ impl EvidenceBundle {
         limitations: Vec<EvidenceLimitation>,
     ) -> Result<Self, EvidenceError> {
         let artifact_sha256 = artifact_sha256.into().to_ascii_lowercase();
-        if !valid_sha256(&artifact_sha256) { return Err(EvidenceError::InvalidArtifactHash); }
+        if !valid_sha256(&artifact_sha256) {
+            return Err(EvidenceError::InvalidArtifactHash);
+        }
         if coverage.analyzed_bytes > coverage.total_bytes {
             return Err(EvidenceError::CoverageExceedsArtifact);
         }
@@ -161,7 +177,13 @@ impl EvidenceBundle {
                 return Err(EvidenceError::DuplicateEvidenceId);
             }
         }
-        Ok(Self { schema_version: 1, artifact_sha256, records, coverage, limitations })
+        Ok(Self {
+            schema_version: 1,
+            artifact_sha256,
+            records,
+            coverage,
+            limitations,
+        })
     }
 }
 
@@ -169,40 +191,77 @@ impl EvidenceBundle {
 mod tests {
     use super::*;
 
-    fn hash() -> String { "a".repeat(64) }
+    fn hash() -> String {
+        "a".repeat(64)
+    }
 
     #[test]
     fn evidence_id_is_deterministic_for_same_observation() {
-        let make = || EvidenceRecord::new(
-            hash(), "binary_header", "format", "ELF header observed",
-            Confidence::Observed, Authority::LocalAnalyzer, None,
-            serde_json::json!({"format":"elf"})
-        ).unwrap();
+        let make = || {
+            EvidenceRecord::new(
+                hash(),
+                "binary_header",
+                "format",
+                "ELF header observed",
+                Confidence::Observed,
+                Authority::LocalAnalyzer,
+                None,
+                serde_json::json!({"format":"elf"}),
+            )
+            .unwrap()
+        };
         assert_eq!(make().evidence_id, make().evidence_id);
     }
 
     #[test]
     fn rejects_invalid_hash_and_zero_length_location() {
         assert_eq!(
-            EvidenceRecord::new("bad", "analyzer", "kind", "summary",
-                Confidence::Observed, Authority::LocalAnalyzer, None, serde_json::json!({}))
-                .unwrap_err(),
+            EvidenceRecord::new(
+                "bad",
+                "analyzer",
+                "kind",
+                "summary",
+                Confidence::Observed,
+                Authority::LocalAnalyzer,
+                None,
+                serde_json::json!({})
+            )
+            .unwrap_err(),
             EvidenceError::InvalidArtifactHash
         );
         assert_eq!(
-            EvidenceRecord::new(hash(), "analyzer", "kind", "summary",
-                Confidence::Observed, Authority::LocalAnalyzer,
-                Some(SourceLocation { offset: 0, length: 0, label: None }), serde_json::json!({}))
-                .unwrap_err(),
+            EvidenceRecord::new(
+                hash(),
+                "analyzer",
+                "kind",
+                "summary",
+                Confidence::Observed,
+                Authority::LocalAnalyzer,
+                Some(SourceLocation {
+                    offset: 0,
+                    length: 0,
+                    label: None
+                }),
+                serde_json::json!({})
+            )
+            .unwrap_err(),
             EvidenceError::InvalidLocation
         );
     }
 
     #[test]
     fn bundle_rejects_coverage_beyond_artifact_size() {
-        let result = EvidenceBundle::new(hash(), vec![], Coverage {
-            analyzed_bytes: 11, total_bytes: 10, categories: vec![], partial: false
-        }, vec![]);
+        let result = EvidenceBundle::new(
+            hash(),
+            vec![],
+            Coverage {
+                analyzed_bytes: 11,
+                total_bytes: 10,
+                categories: vec![],
+                partial: false,
+            },
+            vec![],
+        );
         assert_eq!(result.unwrap_err(), EvidenceError::CoverageExceedsArtifact);
     }
 }

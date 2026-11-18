@@ -29,16 +29,24 @@ pub struct InstructionRecord {
 impl InstructionRecord {
     fn validate(&self) -> Result<(), DisassemblyError> {
         if self.size == 0 {
-            return Err(DisassemblyError::ZeroInstructionSize { address: self.address });
+            return Err(DisassemblyError::ZeroInstructionSize {
+                address: self.address,
+            });
         }
         if self.mnemonic.trim().is_empty() {
-            return Err(DisassemblyError::EmptyMnemonic { address: self.address });
+            return Err(DisassemblyError::EmptyMnemonic {
+                address: self.address,
+            });
         }
         if self.is_conditional_branch && !self.is_branch {
-            return Err(DisassemblyError::ConditionalWithoutBranch { address: self.address });
+            return Err(DisassemblyError::ConditionalWithoutBranch {
+                address: self.address,
+            });
         }
         if self.branch_target.is_some() && !self.is_branch && !self.is_call {
-            return Err(DisassemblyError::UnexpectedTarget { address: self.address });
+            return Err(DisassemblyError::UnexpectedTarget {
+                address: self.address,
+            });
         }
         Ok(())
     }
@@ -46,7 +54,9 @@ impl InstructionRecord {
     pub fn end_address(&self) -> Result<u64, DisassemblyError> {
         self.address
             .checked_add(u64::from(self.size))
-            .ok_or(DisassemblyError::AddressOverflow { address: self.address })
+            .ok_or(DisassemblyError::AddressOverflow {
+                address: self.address,
+            })
     }
 }
 
@@ -88,13 +98,29 @@ pub enum DisassemblyError {
 impl std::fmt::Display for DisassemblyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::EmptyMnemonic { address } => write!(f, "instruction at {address:#x} has no mnemonic"),
-            Self::ZeroInstructionSize { address } => write!(f, "instruction at {address:#x} has zero size"),
-            Self::ConditionalWithoutBranch { address } => write!(f, "conditional instruction at {address:#x} is not marked as a branch"),
-            Self::UnexpectedTarget { address } => write!(f, "non-control-flow instruction at {address:#x} has a target"),
-            Self::AddressOverflow { address } => write!(f, "instruction at {address:#x} overflows the address space"),
-            Self::DuplicateAddress { address } => write!(f, "duplicate instruction address {address:#x}"),
-            Self::OverlappingInstructions { first, second } => write!(f, "instructions at {first:#x} and {second:#x} overlap"),
+            Self::EmptyMnemonic { address } => {
+                write!(f, "instruction at {address:#x} has no mnemonic")
+            }
+            Self::ZeroInstructionSize { address } => {
+                write!(f, "instruction at {address:#x} has zero size")
+            }
+            Self::ConditionalWithoutBranch { address } => write!(
+                f,
+                "conditional instruction at {address:#x} is not marked as a branch"
+            ),
+            Self::UnexpectedTarget { address } => write!(
+                f,
+                "non-control-flow instruction at {address:#x} has a target"
+            ),
+            Self::AddressOverflow { address } => {
+                write!(f, "instruction at {address:#x} overflows the address space")
+            }
+            Self::DuplicateAddress { address } => {
+                write!(f, "duplicate instruction address {address:#x}")
+            }
+            Self::OverlappingInstructions { first, second } => {
+                write!(f, "instructions at {first:#x} and {second:#x} overlap")
+            }
             Self::EmptyInput => write!(f, "disassembly input is empty"),
         }
     }
@@ -113,22 +139,24 @@ pub fn build_control_flow_graph(
     let mut ordered = instructions.to_vec();
     ordered.sort_by_key(|instruction| instruction.address);
 
-    let mut by_address = BTreeMap::new();
+    let mut previous: Option<&InstructionRecord> = None;
     for instruction in &ordered {
         instruction.validate()?;
-        let end = instruction.end_address()?;
-        if by_address.insert(instruction.address, instruction).is_some() {
-            return Err(DisassemblyError::DuplicateAddress { address: instruction.address });
+        instruction.end_address()?;
+        if previous.is_some_and(|item| item.address == instruction.address) {
+            return Err(DisassemblyError::DuplicateAddress {
+                address: instruction.address,
+            });
         }
-        if let Some(previous) = ordered.iter().take_while(|item| item.address < instruction.address).last() {
-            if previous.end_address()? > instruction.address {
+        if let Some(previous_instruction) = previous {
+            if previous_instruction.end_address()? > instruction.address {
                 return Err(DisassemblyError::OverlappingInstructions {
-                    first: previous.address,
+                    first: previous_instruction.address,
                     second: instruction.address,
                 });
             }
         }
-        let _ = end;
+        previous = Some(instruction);
     }
 
     let mut leaders = BTreeSet::new();
@@ -155,7 +183,7 @@ pub fn build_control_flow_graph(
             blocks.push(current);
             current = Vec::new();
         }
-        current.push(*instruction);
+        current.push(instruction);
     }
     if !current.is_empty() {
         blocks.push(current);
@@ -221,4 +249,59 @@ pub fn build_control_flow_graph(
         calls,
         unresolved_branch_targets: unresolved.into_iter().collect(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn instruction(address: u64, size: u8) -> InstructionRecord {
+        InstructionRecord {
+            address,
+            size,
+            mnemonic: "nop".into(),
+            operands: String::new(),
+            is_branch: false,
+            is_conditional_branch: false,
+            is_call: false,
+            is_return: false,
+            branch_target: None,
+        }
+    }
+
+    #[test]
+    fn builds_a_block_from_non_overlapping_instructions() {
+        let graph =
+            build_control_flow_graph(&[instruction(0x1000, 1), instruction(0x1001, 1)]).unwrap();
+
+        assert_eq!(graph.instruction_count, 2);
+        assert_eq!(graph.blocks.len(), 1);
+        assert_eq!(graph.blocks[0].instruction_addresses, vec![0x1000, 0x1001]);
+        assert_eq!(graph.blocks[0].end_address_exclusive, 0x1002);
+    }
+
+    #[test]
+    fn rejects_overlapping_instruction_ranges() {
+        let error = build_control_flow_graph(&[instruction(0x1000, 2), instruction(0x1001, 1)])
+            .unwrap_err();
+
+        assert_eq!(
+            error,
+            DisassemblyError::OverlappingInstructions {
+                first: 0x1000,
+                second: 0x1001,
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_duplicate_instruction_addresses() {
+        let error = build_control_flow_graph(&[instruction(0x1000, 1), instruction(0x1000, 1)])
+            .unwrap_err();
+
+        assert_eq!(
+            error,
+            DisassemblyError::DuplicateAddress { address: 0x1000 }
+        );
+    }
 }

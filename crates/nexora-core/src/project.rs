@@ -73,10 +73,14 @@ impl std::fmt::Display for ProjectError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::EmptyField(field) => write!(f, "{field} must not be empty"),
-            Self::InvalidSha256 => write!(f, "artifact SHA-256 must contain 64 hexadecimal characters"),
+            Self::InvalidSha256 => {
+                write!(f, "artifact SHA-256 must contain 64 hexadecimal characters")
+            }
             Self::UnsafeArtifactPath => write!(f, "artifact path must be a safe relative path"),
             Self::DuplicateArtifact => write!(f, "project contains a duplicate artifact ID"),
-            Self::InvalidTransition { from, to } => write!(f, "job transition {from:?} -> {to:?} is not allowed"),
+            Self::InvalidTransition { from, to } => {
+                write!(f, "job transition {from:?} -> {to:?} is not allowed")
+            }
             Self::InvalidAttempt => write!(f, "job attempt must be greater than zero"),
         }
     }
@@ -84,7 +88,11 @@ impl std::fmt::Display for ProjectError {
 impl std::error::Error for ProjectError {}
 
 fn non_empty(value: &str, field: &'static str) -> Result<(), ProjectError> {
-    if value.trim().is_empty() { Err(ProjectError::EmptyField(field)) } else { Ok(()) }
+    if value.trim().is_empty() {
+        Err(ProjectError::EmptyField(field))
+    } else {
+        Ok(())
+    }
 }
 
 fn valid_sha256(value: &str) -> bool {
@@ -97,7 +105,9 @@ fn safe_relative_path(value: &str) -> bool {
     }
     let path = Path::new(value);
     !path.is_absolute()
-        && path.components().all(|component| matches!(component, Component::Normal(_)))
+        && path
+            .components()
+            .all(|component| matches!(component, Component::Normal(_)))
 }
 
 impl ProjectManifest {
@@ -108,9 +118,15 @@ impl ProjectManifest {
         let mut seen = std::collections::BTreeSet::new();
         for artifact in &self.artifacts {
             non_empty(&artifact.artifact_id, "artifact_id")?;
-            if !valid_sha256(&artifact.sha256) { return Err(ProjectError::InvalidSha256); }
-            if !safe_relative_path(&artifact.relative_path) { return Err(ProjectError::UnsafeArtifactPath); }
-            if !seen.insert(artifact.artifact_id.as_str()) { return Err(ProjectError::DuplicateArtifact); }
+            if !valid_sha256(&artifact.sha256) {
+                return Err(ProjectError::InvalidSha256);
+            }
+            if !safe_relative_path(&artifact.relative_path) {
+                return Err(ProjectError::UnsafeArtifactPath);
+            }
+            if !seen.insert(artifact.artifact_id.as_str()) {
+                return Err(ProjectError::DuplicateArtifact);
+            }
         }
         Ok(())
     }
@@ -123,7 +139,9 @@ impl AnalysisJob {
         non_empty(&self.artifact_id, "artifact_id")?;
         non_empty(&self.created_at, "created_at")?;
         non_empty(&self.updated_at, "updated_at")?;
-        if self.attempt == 0 { return Err(ProjectError::InvalidAttempt); }
+        if self.attempt == 0 {
+            return Err(ProjectError::InvalidAttempt);
+        }
         Ok(())
     }
 
@@ -144,10 +162,16 @@ impl AnalysisJob {
                 | (JobState::Failed, JobState::Queued)
         );
         if !allowed {
-            return Err(ProjectError::InvalidTransition { from: self.state, to: next });
+            return Err(ProjectError::InvalidTransition {
+                from: self.state,
+                to: next,
+            });
         }
         if next == JobState::Queued && self.state == JobState::Failed {
-            self.attempt = self.attempt.checked_add(1).ok_or(ProjectError::InvalidAttempt)?;
+            self.attempt = self
+                .attempt
+                .checked_add(1)
+                .ok_or(ProjectError::InvalidAttempt)?;
         }
         let event = JobTransition {
             job_id: self.job_id.clone(),
@@ -158,7 +182,9 @@ impl AnalysisJob {
         };
         self.state = next;
         self.updated_at = event.occurred_at.clone();
-        if next != JobState::Failed { self.error_code = None; }
+        if next != JobState::Failed {
+            self.error_code = None;
+        }
         Ok(event)
     }
 }
@@ -169,10 +195,14 @@ mod tests {
 
     fn job() -> AnalysisJob {
         AnalysisJob {
-            job_id: "job-1".into(), project_id: "project-1".into(),
-            artifact_id: "artifact-1".into(), state: JobState::Queued,
-            attempt: 1, created_at: "2026-01-01T00:00:00Z".into(),
-            updated_at: "2026-01-01T00:00:00Z".into(), error_code: None,
+            job_id: "job-1".into(),
+            project_id: "project-1".into(),
+            artifact_id: "artifact-1".into(),
+            state: JobState::Queued,
+            attempt: 1,
+            created_at: "2026-01-01T00:00:00Z".into(),
+            updated_at: "2026-01-01T00:00:00Z".into(),
+            error_code: None,
         }
     }
 
@@ -189,8 +219,12 @@ mod tests {
     #[test]
     fn failed_job_can_be_requeued_with_incremented_attempt() {
         let mut value = job();
-        value.transition(JobState::Running, "t1", "worker claimed").unwrap();
-        value.transition(JobState::Failed, "t2", "parser error").unwrap();
+        value
+            .transition(JobState::Running, "t1", "worker claimed")
+            .unwrap();
+        value
+            .transition(JobState::Failed, "t2", "parser error")
+            .unwrap();
         value.transition(JobState::Queued, "t3", "retry").unwrap();
         assert_eq!(value.attempt, 2);
         assert_eq!(value.state, JobState::Queued);
@@ -199,13 +233,19 @@ mod tests {
     #[test]
     fn manifest_rejects_path_traversal_and_duplicate_artifacts() {
         let artifact = ProjectArtifact {
-            artifact_id: "a1".into(), sha256: "a".repeat(64),
-            relative_path: "../outside".into(), size_bytes: 10,
-            format: "elf".into(), trust: ArtifactTrust::Untrusted,
+            artifact_id: "a1".into(),
+            sha256: "a".repeat(64),
+            relative_path: "../outside".into(),
+            size_bytes: 10,
+            format: "elf".into(),
+            trust: ArtifactTrust::Untrusted,
         };
         let manifest = ProjectManifest {
-            schema_version: 1, project_id: "p1".into(), name: "demo".into(),
-            created_at: "now".into(), artifacts: vec![artifact],
+            schema_version: 1,
+            project_id: "p1".into(),
+            name: "demo".into(),
+            created_at: "now".into(),
+            artifacts: vec![artifact],
         };
         assert_eq!(manifest.validate(), Err(ProjectError::UnsafeArtifactPath));
     }

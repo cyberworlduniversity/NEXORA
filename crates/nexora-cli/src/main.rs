@@ -29,14 +29,20 @@ fn run() -> Result<(), String> {
                 match option.as_str() {
                     "--max-bytes" => {
                         let value = args.next().ok_or("missing value for --max-bytes")?;
-                        policy.max_input_bytes = value.parse().map_err(|_| "invalid --max-bytes value")?;
+                        policy.max_input_bytes =
+                            value.parse().map_err(|_| "invalid --max-bytes value")?;
                     }
                     _ => return Err(format!("unknown report option: {option}")),
                 }
             }
             let pipeline = AnalysisPipeline::new(policy).map_err(|e| e.to_string())?;
-            let report = pipeline.analyze_file(&PathBuf::from(file)).map_err(|e| e.to_string())?;
-            println!("{}", serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?);
+            let report = pipeline
+                .analyze_file(&PathBuf::from(file))
+                .map_err(|e| e.to_string())?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
+            );
         }
         Some("inspect") => {
             let file = args.next().ok_or("missing input file")?;

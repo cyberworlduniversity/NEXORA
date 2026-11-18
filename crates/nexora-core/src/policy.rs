@@ -38,11 +38,19 @@ pub enum PolicyError {
 impl std::fmt::Display for PolicyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InputTooLarge { actual, maximum } => write!(f, "input size {actual} exceeds policy limit {maximum}"),
+            Self::InputTooLarge { actual, maximum } => {
+                write!(f, "input size {actual} exceeds policy limit {maximum}")
+            }
             Self::ZeroLimit(name) => write!(f, "policy limit {name} must be greater than zero"),
-            Self::DynamicExecutionDisabled => write!(f, "dynamic execution is disabled by the active policy"),
-            Self::ExternalToolsDisabled => write!(f, "external tools are disabled by the active policy"),
-            Self::OutputLimitExceeded { actual, maximum } => write!(f, "output count {actual} exceeds policy limit {maximum}"),
+            Self::DynamicExecutionDisabled => {
+                write!(f, "dynamic execution is disabled by the active policy")
+            }
+            Self::ExternalToolsDisabled => {
+                write!(f, "external tools are disabled by the active policy")
+            }
+            Self::OutputLimitExceeded { actual, maximum } => {
+                write!(f, "output count {actual} exceeds policy limit {maximum}")
+            }
         }
     }
 }
@@ -50,35 +58,59 @@ impl std::error::Error for PolicyError {}
 
 impl AnalysisPolicy {
     pub fn validate(&self) -> Result<(), PolicyError> {
-        if self.max_input_bytes == 0 { return Err(PolicyError::ZeroLimit("max_input_bytes")); }
-        if self.max_evidence_records == 0 { return Err(PolicyError::ZeroLimit("max_evidence_records")); }
-        if self.max_findings == 0 { return Err(PolicyError::ZeroLimit("max_findings")); }
-        if self.max_printable_strings == 0 { return Err(PolicyError::ZeroLimit("max_printable_strings")); }
-        if self.min_printable_string_length == 0 { return Err(PolicyError::ZeroLimit("min_printable_string_length")); }
+        if self.max_input_bytes == 0 {
+            return Err(PolicyError::ZeroLimit("max_input_bytes"));
+        }
+        if self.max_evidence_records == 0 {
+            return Err(PolicyError::ZeroLimit("max_evidence_records"));
+        }
+        if self.max_findings == 0 {
+            return Err(PolicyError::ZeroLimit("max_findings"));
+        }
+        if self.max_printable_strings == 0 {
+            return Err(PolicyError::ZeroLimit("max_printable_strings"));
+        }
+        if self.min_printable_string_length == 0 {
+            return Err(PolicyError::ZeroLimit("min_printable_string_length"));
+        }
         Ok(())
     }
 
     pub fn check_input_size(&self, actual: u64) -> Result<(), PolicyError> {
         self.validate()?;
         if actual > self.max_input_bytes {
-            return Err(PolicyError::InputTooLarge { actual, maximum: self.max_input_bytes });
+            return Err(PolicyError::InputTooLarge {
+                actual,
+                maximum: self.max_input_bytes,
+            });
         }
         Ok(())
     }
 
     pub fn check_evidence_count(&self, actual: usize) -> Result<(), PolicyError> {
         if actual > self.max_evidence_records {
-            return Err(PolicyError::OutputLimitExceeded { actual, maximum: self.max_evidence_records });
+            return Err(PolicyError::OutputLimitExceeded {
+                actual,
+                maximum: self.max_evidence_records,
+            });
         }
         Ok(())
     }
 
     pub fn require_external_tools(&self) -> Result<(), PolicyError> {
-        if self.allow_external_tools { Ok(()) } else { Err(PolicyError::ExternalToolsDisabled) }
+        if self.allow_external_tools {
+            Ok(())
+        } else {
+            Err(PolicyError::ExternalToolsDisabled)
+        }
     }
 
     pub fn require_dynamic_execution(&self) -> Result<(), PolicyError> {
-        if self.allow_dynamic_execution { Ok(()) } else { Err(PolicyError::DynamicExecutionDisabled) }
+        if self.allow_dynamic_execution {
+            Ok(())
+        } else {
+            Err(PolicyError::DynamicExecutionDisabled)
+        }
     }
 }
 
@@ -97,9 +129,19 @@ mod tests {
 
     #[test]
     fn enforces_input_and_evidence_limits() {
-        let policy = AnalysisPolicy { max_input_bytes: 10, max_evidence_records: 2, ..Default::default() };
+        let policy = AnalysisPolicy {
+            max_input_bytes: 10,
+            max_evidence_records: 2,
+            ..Default::default()
+        };
         assert!(policy.check_input_size(10).is_ok());
-        assert!(matches!(policy.check_input_size(11), Err(PolicyError::InputTooLarge { .. })));
-        assert!(matches!(policy.check_evidence_count(3), Err(PolicyError::OutputLimitExceeded { .. })));
+        assert!(matches!(
+            policy.check_input_size(11),
+            Err(PolicyError::InputTooLarge { .. })
+        ));
+        assert!(matches!(
+            policy.check_evidence_count(3),
+            Err(PolicyError::OutputLimitExceeded { .. })
+        ));
     }
 }

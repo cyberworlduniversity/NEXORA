@@ -9,7 +9,10 @@ pub mod project;
 pub mod tool_registry;
 
 pub use dependencies::DependencyReport;
-pub use disassembly::{build_control_flow_graph, BasicBlock, CallEdge, ControlFlowGraph, DisassemblyError, InstructionRecord};
+pub use disassembly::{
+    build_control_flow_graph, BasicBlock, CallEdge, ControlFlowGraph, DisassemblyError,
+    InstructionRecord,
+};
 pub use pipeline::{AnalysisPipeline, PipelineError, PipelineReport};
 pub use policy::{AnalysisPolicy, PolicyError};
 
@@ -128,6 +131,7 @@ pub enum CoreError {
     InvalidArtifactId,
     NotRegularFile,
     TooLarge { limit: u64 },
+    ArtifactIntegrityMismatch,
     Io(io::Error),
     Manifest(serde_json::Error),
 }
@@ -139,6 +143,12 @@ impl fmt::Display for CoreError {
             Self::NotRegularFile => write!(formatter, "input must be a regular file"),
             Self::TooLarge { limit } => {
                 write!(formatter, "input exceeds configured limit of {limit} bytes")
+            }
+            Self::ArtifactIntegrityMismatch => {
+                write!(
+                    formatter,
+                    "existing content-addressed artifact failed integrity verification"
+                )
             }
             Self::Io(error) => write!(formatter, "I/O error: {error}"),
             Self::Manifest(error) => write!(formatter, "manifest serialization error: {error}"),
@@ -158,6 +168,36 @@ impl From<serde_json::Error> for CoreError {
     fn from(error: serde_json::Error) -> Self {
         Self::Manifest(error)
     }
+}
+
+fn verify_existing_artifact(
+    path: &Path,
+    expected_sha256: &str,
+    expected_size: u64,
+) -> Result<(), CoreError> {
+    let metadata = fs::symlink_metadata(path)?;
+    if !metadata.file_type().is_file() || metadata.len() != expected_size {
+        return Err(CoreError::ArtifactIntegrityMismatch);
+    }
+
+    let file = File::open(path)?;
+    let mut reader = file.take(expected_size.saturating_add(1));
+    let mut hasher = Sha256::new();
+    let mut size = 0u64;
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        let count = reader.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        size += count as u64;
+        hasher.update(&buffer[..count]);
+    }
+
+    if size != expected_size || format!("{:x}", hasher.finalize()) != expected_sha256 {
+        return Err(CoreError::ArtifactIntegrityMismatch);
+    }
+    Ok(())
 }
 
 /// Store an input by SHA-256; apply a hard size limit; never execute it.
@@ -197,9 +237,13 @@ pub fn ingest_file(
                 output.write_all(&bytes)?;
                 output.sync_all()?;
             }
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                verify_existing_artifact(&destination, &digest_hex, bytes.len() as u64)?;
+            }
             Err(error) => return Err(CoreError::Io(error)),
         }
+    } else {
+        verify_existing_artifact(&destination, &digest_hex, bytes.len() as u64)?;
     }
 
     let record = ArtifactRecord {
@@ -414,7 +458,9 @@ pub struct AnalyzerRegistry {
 
 impl AnalyzerRegistry {
     pub fn new() -> Self {
-        Self { analyzers: Vec::new() }
+        Self {
+            analyzers: Vec::new(),
+        }
     }
 
     pub fn register<A: Analyzer + 'static>(&mut self, analyzer: A) {
@@ -723,6 +769,16 @@ mod tests {
                 .count(),
             2
         );
+
+        fs::write(
+            workspace.join("artifacts").join(&first.artifact_id),
+            b"\x7fELFtampl",
+        )
+        .unwrap();
+        assert!(matches!(
+            ingest_file(&source, &workspace, &IngestOptions::default()),
+            Err(CoreError::ArtifactIntegrityMismatch)
+        ));
         let _ = fs::remove_dir_all(root);
     }
 

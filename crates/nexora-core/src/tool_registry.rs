@@ -44,8 +44,12 @@ impl std::fmt::Display for RegistryError {
         match self {
             Self::EmptyField(field) => write!(f, "{field} must not be empty"),
             Self::DuplicateTool(id) => write!(f, "tool {id} is already registered"),
-            Self::UntrustedTool(id) => write!(f, "tool {id} is not trusted by the active registry policy"),
-            Self::EffectNotPermitted { tool, effect } => write!(f, "tool {tool} requests disallowed effect {effect:?}"),
+            Self::UntrustedTool(id) => {
+                write!(f, "tool {id} is not trusted by the active registry policy")
+            }
+            Self::EffectNotPermitted { tool, effect } => {
+                write!(f, "tool {tool} requests disallowed effect {effect:?}")
+            }
             Self::ToolNotFound(id) => write!(f, "tool {id} is not registered"),
         }
     }
@@ -71,9 +75,15 @@ impl ToolRegistry {
         descriptor: ToolDescriptor,
         policy: &RegistryPolicy,
     ) -> Result<(), RegistryError> {
-        if descriptor.tool_id.trim().is_empty() { return Err(RegistryError::EmptyField("tool_id")); }
-        if descriptor.version.trim().is_empty() { return Err(RegistryError::EmptyField("version")); }
-        if descriptor.description.trim().is_empty() { return Err(RegistryError::EmptyField("description")); }
+        if descriptor.tool_id.trim().is_empty() {
+            return Err(RegistryError::EmptyField("tool_id"));
+        }
+        if descriptor.version.trim().is_empty() {
+            return Err(RegistryError::EmptyField("version"));
+        }
+        if descriptor.description.trim().is_empty() {
+            return Err(RegistryError::EmptyField("description"));
+        }
         if self.tools.contains_key(&descriptor.tool_id) {
             return Err(RegistryError::DuplicateTool(descriptor.tool_id));
         }
@@ -91,7 +101,8 @@ impl ToolRegistry {
             };
             if !permitted {
                 return Err(RegistryError::EffectNotPermitted {
-                    tool: descriptor.tool_id.clone(), effect: *effect,
+                    tool: descriptor.tool_id.clone(),
+                    effect: *effect,
                 });
             }
         }
@@ -100,15 +111,21 @@ impl ToolRegistry {
     }
 
     pub fn get(&self, tool_id: &str) -> Result<&ToolDescriptor, RegistryError> {
-        self.tools.get(tool_id).ok_or_else(|| RegistryError::ToolNotFound(tool_id.to_owned()))
+        self.tools
+            .get(tool_id)
+            .ok_or_else(|| RegistryError::ToolNotFound(tool_id.to_owned()))
     }
 
     pub fn list(&self) -> Vec<&ToolDescriptor> {
         self.tools.values().collect()
     }
 
-    pub fn len(&self) -> usize { self.tools.len() }
-    pub fn is_empty(&self) -> bool { self.tools.is_empty() }
+    pub fn len(&self) -> usize {
+        self.tools.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.tools.is_empty()
+    }
 }
 
 #[cfg(test)]
@@ -117,9 +134,12 @@ mod tests {
 
     fn descriptor(effect: ToolEffect) -> ToolDescriptor {
         ToolDescriptor {
-            tool_id: "inspect.header".into(), version: "1.0.0".into(),
-            description: "Read-only header inspection".into(), trust: ToolTrust::BuiltIn,
-            effects: vec![effect], input_schema: serde_json::json!({}),
+            tool_id: "inspect.header".into(),
+            version: "1.0.0".into(),
+            description: "Read-only header inspection".into(),
+            trust: ToolTrust::BuiltIn,
+            effects: vec![effect],
+            input_schema: serde_json::json!({}),
             output_schema: serde_json::json!({}),
         }
     }
@@ -127,7 +147,9 @@ mod tests {
     #[test]
     fn default_policy_accepts_only_read_only_builtin_tools() {
         let mut registry = ToolRegistry::default();
-        assert!(registry.register(descriptor(ToolEffect::ReadOnly), &RegistryPolicy::default()).is_ok());
+        assert!(registry
+            .register(descriptor(ToolEffect::ReadOnly), &RegistryPolicy::default())
+            .is_ok());
         assert_eq!(registry.len(), 1);
         let mut network_tool = descriptor(ToolEffect::NetworkAccess);
         network_tool.tool_id = "network.inspect".into();
