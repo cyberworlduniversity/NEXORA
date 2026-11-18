@@ -35,12 +35,13 @@ Requires stable Rust.
     cargo run -p nexora-cli -- version
     cargo run -p nexora-cli -- inspect ./sample.bin
     cargo run -p nexora-cli -- analyze ./sample.bin
+    cargo run -p nexora-cli -- report ./sample.bin
     cargo run -p nexora-cli -- ingest ./sample.bin --workspace ./nexora-project
 
 Artifacts are stored under artifacts/<sha256>; metadata is appended to manifest.jsonl. Input files are never executed.
 
 ## Not yet implemented
-Python adapters, dependency/import analysis, MCP, REST, authentication, dashboard, and isolated dynamic analysis remain planned work. This repository is not yet a complete production reverse-engineering platform.
+Python adapters, full imported-symbol/relocation/call-graph analysis, MCP, REST, authentication, dashboard, and isolated dynamic analysis remain planned work. This repository is not yet a complete production reverse-engineering platform.
 
 See docs/ARCHITECTURE.md, docs/ROADMAP.md, and SECURITY.md.
 
@@ -51,4 +52,23 @@ See docs/ARCHITECTURE.md, docs/ROADMAP.md, and SECURITY.md.
 
 ### Binary header metadata
 
-Static analysis extracts bounded ELF, PE, and Mach-O header metadata when the header is structurally valid. ELF section-table bounds and PE section-table bounds are checked before metadata is reported. This initial parser does not yet decode symbols, imports, relocations, or section contents. Malformed or unsupported headers produce `binary_metadata: null`; input files are never executed.
+Static analysis extracts bounded ELF, PE, and Mach-O header metadata when the header is structurally valid. ELF section-table bounds and PE section-table bounds are checked before metadata is reported. A bounded dependency parser also extracts ELF DT_NEEDED names, PE import-library names, and Mach-O dylib load-command names. Imported symbols, relocations, and section contents are not yet decoded. Malformed or unsupported headers produce `binary_metadata: null`; input files are never executed.
+
+
+## Evidence-backed analysis pipeline
+
+The core exposes structured evidence records tied to artifact SHA-256, explicit confidence and authority labels, deterministic IDs, coverage, and limitations. AnalysisPolicy applies input and output limits and defaults to static-only operation. The report CLI command emits a normalized JSON pipeline report:
+
+    cargo run -p nexora-cli -- report ./sample.bin
+    cargo run -p nexora-cli -- report ./sample.bin --max-bytes 10485760
+
+This remains bounded static triage. It does not execute samples, resolve imported symbols or call graphs, or invoke external reverse-engineering tools. See docs/EVIDENCE_MODEL.md.
+
+
+## Disassembly and control-flow model
+
+The core now defines normalized instruction records, validates instruction ranges and control-flow metadata, and can derive basic blocks, successor edges, call edges, and unresolved branch targets from trusted disassembler output. It is an adapter contract and graph builder, not yet a machine-code decoder; Ghidra/radare2 adapters remain future work.
+
+## Container packaging
+
+A non-root CLI container is defined in `Dockerfile`. Packaging instructions and the distinction between local CLI packaging and a hosted multi-user deployment are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). NEXORA does not yet expose a web/API service, so a hosted production deployment is not available at this stage.

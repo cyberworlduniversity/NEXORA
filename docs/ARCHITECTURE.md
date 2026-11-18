@@ -66,3 +66,24 @@ An agent must not receive arbitrary host shell access. Each tool call is validat
 - No bypassing DRM, licensing, access controls, or authentication.
 - No analysis of systems without authorization.
 - No claim that AI-generated reconstruction is original source code or guaranteed correct.
+
+
+## 8. Implemented core contracts
+
+The current Rust core now contains:
+- a bounded artifact-ingestion and static-triage foundation;
+- an evidence schema with deterministic observation IDs, confidence, authority, coverage and limitations;
+- a policy object that defaults to static-only operation and bounds input and output sizes;
+- a static analysis pipeline that emits JSON reports and extracts bounded ELF DT_NEEDED, PE import-library, and Mach-O dylib dependency names;
+- a project manifest model with safe relative-path validation;
+- an analysis-job state machine with explicit legal transitions and audit events;
+- a capability registry that rejects unverified tools and disallowed effects by default.
+
+These contracts are metadata and in-process policy foundations. They do not yet provide a persistent job scheduler, a process sandbox, dynamic plugin loading, MCP server, REST server, authentication, or dashboard. Those remain separate milestones.
+
+
+## 9. Disassembly adapter boundary
+
+The core accepts normalized instruction records from a trusted adapter, validates address ranges and control-flow flags, and derives basic blocks and graph edges. This separates format- and architecture-specific decoding from the canonical NEXORA graph representation. The current implementation does not decode machine code itself and does not execute samples. Adapter processes must later be declared in the capability registry and isolated according to the deployment threat model.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the current CLI packaging boundary and missing hosted-service components.
